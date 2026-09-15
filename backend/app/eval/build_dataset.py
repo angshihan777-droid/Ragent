@@ -1,16 +1,17 @@
-"""下载并构建 CMRC2018 评测集：把公开中文阅读理解数据集复用为 RAG 检索评测。
+"""下载并构建 T2Reranking 评测集：把公开中文重排基准复用为本项目的重排评测。
 
-为什么用公开数据集：自造语料会被质疑"数据和答案都你自己编、挑好看的"。CMRC2018
-是哈工大讯飞发布的公开数据集，语料(维基百科段落)、问题、答案标注都由第三方给定，
-可追溯、可复现；且为中文，与线上使用的中文 embedding 模型同一套，评测分数能直接
-代表线上真实检索能力。
+为什么用公开数据集：自造语料会被质疑"数据和答案都你自己编、挑好看的"。T2Reranking
+是 C-MTEB 收录的公开中文重排(reranking)基准，query、正例段落、负例段落都由第三方
+标注给定，可追溯、可复现；中文，与线上使用的中文 embedding 模型同一套。
 
-如何复用：CMRC2018 原任务是"给定段落找答案"，这里复用成"检索"——把所有不重复
-段落当作知识库，每个问题的正确来源(gold)= 它自带的那段 context。检索评测即：
-向量检索能否在整个语料库里把问题对应的那段捞到 top-k。这是常见且合理的复用。
+数据结构：每个 query 自带一批候选段落——正例(能回答)与人工标注的强负例(看着相关
+其实答非所问)。评测即在这批候选里比较两种排序：纯向量相似度 vs 向量召回后再 rerank，
+正是本项目两阶段检索里"重排"这一步真正要干的事，强负例最能体现 rerank 的价值。
+
+多正例：一个 query 可能有多个正例段落，因此指标按多正例口径计算(见 rag_eval.py)。
 
 跑法：docker compose exec worker python -m app.eval.build_dataset
-产物：app/eval/data/cmrc_eval.json（语料段落 + 标注问题），rag_eval.py 直接读它。
+产物：app/eval/data/t2rerank_eval.json，rag_eval.py 直接读它。
 """
 import json
 import os
@@ -18,15 +19,14 @@ import time
 
 import requests
 
-# 目标规模：语料 60~100 段、问题 100~150 条。太小分数虚高，太大本地 CPU rerank 跑太久。
-TARGET_PASSAGES = 150
-MAX_QUESTIONS_PER_PASSAGE = 2  # 每段最多取 2 问，避免题目扎堆在少数长段落上
-OUT_PATH = os.path.join(os.path.dirname(__file__), "data", "cmrc_eval.json")
+# 目标题量：取 dev 集前 N 个 query。每题候选池是自带的正/负例，不依赖外部大语料。
+TARGET_QUERIES = 300
+OUT_PATH = os.path.join(os.path.dirname(__file__), "data", "t2rerank_eval.json")
 
 # HuggingFace datasets-server 分页 rows API：无需装 datasets/pyarrow，requests 即可拉。
 ROWS_API = "https://datasets-server.huggingface.co/rows"
-DATASET = "hfl/cmrc2018"
-SPLIT = "validation"
+DATASET = "C-MTEB/T2Reranking"
+SPLIT = "dev"
 PAGE = 100
 
 
@@ -39,7 +39,7 @@ def _fetch_page(offset: int) -> list[dict]:
         "offset": offset,
         "length": PAGE,
     }
-    for attempt in range(3):
+    for _ in range(3):
         resp = requests.get(ROWS_API, params=params, timeout=30)
         if resp.status_code == 200:
             return [x["row"] for x in resp.json()["rows"]]
@@ -48,56 +48,56 @@ def _fetch_page(offset: int) -> list[dict]:
     return []
 
 
-def build() -> dict:
-    """按顺序扫描验证集，去重段落建语料，每段取前若干问，直到凑够目标规模。
+def build() -> list[dict]:
+    """取前 TARGET_QUERIES 个 query，每题保留其自带的正例、负例候选池。
 
-    单正例约束：CMRC2018 每个问题只出自一段 context，所以 gold 唯一、天然无歧义。
-    段落用稳定序号(P0、P1...)当标题，问题记录它归属的段落序号。
+    过滤：跳过没有正例或没有负例的题(无法构成有意义的排序对比)。
+    去重：同一题内候选段落可能重复，去重同时记录哪些是正例(gold)。
     """
-    passages: list[str] = []
-    index_of: dict[str, int] = {}  # context 原文 -> 段落序号，用于去重
-    per_passage_count: dict[int, int] = {}
-    questions: list[dict] = []
-
+    items: list[dict] = []
     offset = 0
-    while len(passages) < TARGET_PASSAGES:
+    while len(items) < TARGET_QUERIES:
         rows = _fetch_page(offset)
         if not rows:
             break
         offset += PAGE
         for row in rows:
-            ctx = row["context"].strip()
-            q = row["question"].strip()
-            if ctx not in index_of:
-                # 段落数已达标就不再新建段落，只在已有段落上补问题
-                if len(passages) >= TARGET_PASSAGES:
-                    continue
-                index_of[ctx] = len(passages)
-                passages.append(ctx)
-                per_passage_count[index_of[ctx]] = 0
-            pid = index_of[ctx]
-            # 每段限流，避免题目集中在少数段落，保证问题覆盖面
-            if per_passage_count[pid] >= MAX_QUESTIONS_PER_PASSAGE:
+            positives = [p.strip() for p in row["positive"] if p.strip()]
+            negatives = [n.strip() for n in row["negative"] if n.strip()]
+            if not positives or not negatives:
                 continue
-            per_passage_count[pid] += 1
-            questions.append({"question": q, "gold": pid})
-
-    # 语料：段落序号 -> 标题(P{i})+正文
-    corpus = [{"title": f"P{i}", "content": passages[i]} for i in range(len(passages))]
-    dataset = [
-        {"question": item["question"], "gold_title": f"P{item['gold']}"}
-        for item in questions
-    ]
-    return {"corpus": corpus, "questions": dataset}
+            pos_set = set(positives)
+            # 候选池 = 正例 + 负例，去重并保留顺序；gold 是其中的正例集合
+            seen, candidates, golds = set(), [], []
+            for c in positives + negatives:
+                if c in seen:
+                    continue
+                seen.add(c)
+                candidates.append(c)
+                if c in pos_set:
+                    golds.append(c)
+            items.append(
+                {
+                    "query": row["query"].strip(),
+                    "candidates": candidates,
+                    "golds": golds,
+                }
+            )
+            if len(items) >= TARGET_QUERIES:
+                break
+    return items
 
 
 def main() -> None:
     os.makedirs(os.path.dirname(OUT_PATH), exist_ok=True)
     data = build()
+    n_cand = sum(len(x["candidates"]) for x in data)
+    n_gold = sum(len(x["golds"]) for x in data)
     with open(OUT_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
     print(
-        f"已写入 {OUT_PATH}：语料 {len(data['corpus'])} 段 / 问题 {len(data['questions'])} 条"
+        f"已写入 {OUT_PATH}：{len(data)} 题 / 候选 {n_cand} 段 / 正例 {n_gold} 段 "
+        f"(平均每题候选 {n_cand/len(data):.1f}、正例 {n_gold/len(data):.1f})"
     )
 
 
