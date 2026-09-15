@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     # 只暴露模型名一个配置项，本地模型无需 base_url/key。
     embedding_model: str = "BAAI/bge-small-zh-v1.5"
 
+    # RAG rerank：两阶段检索的精排模型，同样走本地 fastembed(cross-encoder)。
+    rerank_model: str = "BAAI/bge-reranker-base"
+
     class Config:
         env_file = ".env"
 

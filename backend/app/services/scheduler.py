@@ -3,6 +3,8 @@
 面试点：把「谁能跑」这件事收敛成一个函数 try_dispatch_group。
 不管是新请求进来，还是上一个 run 跑完想拉下一个，都调用它，逻辑只有一处。
 """
+import hashlib
+
 import asyncpg
 
 from app.repositories import requests, runs
@@ -10,8 +12,13 @@ from app.repositories import requests, runs
 
 # 用组标识算一个稳定的 64 位整数，喂给 PG 的事务级 advisory 锁。
 # 目的：让「同一组」的并发派发决策互斥，跨组互不影响。
+# 并发关键：必须用确定性哈希(blake2b)，不能用内置 hash()。
+# 内置 hash() 对字符串按 PYTHONHASHSEED 逐进程随机化，api 与 worker 是两个进程，
+# 同一组会算出不同 key，锁就形同虚设。blake2b 跨进程结果一致，锁才真正生效。
 def _group_lock_key(user_id: str, agent_id: str, thread_id: str) -> int:
-    return hash((user_id, agent_id, thread_id)) % (2**63)
+    raw = f"{user_id}:{agent_id}:{thread_id}".encode()
+    digest = hashlib.blake2b(raw, digest_size=8).digest()
+    return int.from_bytes(digest, "big") % (2**63)
 
 
 async def try_dispatch_group(

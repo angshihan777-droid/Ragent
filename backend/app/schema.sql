@@ -30,8 +30,10 @@ CREATE TABLE IF NOT EXISTS agent_run_requests (
 CREATE TABLE IF NOT EXISTS agent_runs (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     request_id    UUID NOT NULL REFERENCES agent_run_requests(id),  -- 结果必须绑回发起它的请求
-    -- running 执行中 / done 完成 / failed 失败
-    status        TEXT NOT NULL DEFAULT 'running',
+    -- pending 待认领(刚建、还没 worker 抢到) / running 执行中 / done 完成 / failed 失败
+    -- 初态是 pending 而非 running：建 run 到 worker 认领之间若投递失败(先 commit 后 enqueue)，
+    -- 这条 run 会停在 pending，reaper 据此把它当孤儿捞回重投，不会永久卡死本组队列。
+    status        TEXT NOT NULL DEFAULT 'pending',
     lease_owner   TEXT,           -- 哪个 worker 抢到了这次执行
     heartbeat_at  TIMESTAMPTZ,    -- 最近一次心跳续约时间；停跳即视为 worker 已死可被接管
     error         TEXT,
@@ -41,6 +43,8 @@ CREATE TABLE IF NOT EXISTS agent_runs (
 -- 已建库补列：让旧表也具备 message_id，幂等无害
 ALTER TABLE agent_run_requests ADD COLUMN IF NOT EXISTS message_id UUID REFERENCES messages(id);
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS request_id UUID;
+-- 已建库改默认：run 初态从 running 改为 pending(孤儿窗口修复)，幂等无害
+ALTER TABLE agent_runs ALTER COLUMN status SET DEFAULT 'pending';
 
 -- 按 (user, agent, thread) 查同组请求做 FIFO 排队，加索引避免全表扫
 CREATE INDEX IF NOT EXISTS idx_requests_fifo

@@ -6,10 +6,13 @@
 import asyncpg
 
 from app.agent.embedding import embed_query, embed_texts
+from app.agent.rerank import rerank
 from app.repositories import documents
 
 # 每块约 300 字：块太大检索命中不精准，太小又丢上下文，取个够用的中间值。
 CHUNK_SIZE = 300
+# 召回阶段先多捞一些候选，再交给 rerank 精排出最终 top_k。
+RECALL_SIZE = 20
 
 
 def _split(content: str) -> list[str]:
@@ -57,10 +60,15 @@ async def delete_document(pool: asyncpg.Pool, document_id) -> None:
 async def retrieve(
     pool: asyncpg.Pool, project_id, question: str, top_k: int = 3
 ) -> list[str]:
-    """检索：把问题转成向量，取本项目文档里最相近的 top_k 块内容。"""
+    """两阶段检索：先向量召回 RECALL_SIZE 个候选，再 rerank 精排出 top_k。
+
+    先召回后精排：向量检索快但粗，负责从全量里捞回可能相关的候选；
+    rerank 慢但准，只在这一小批候选上做精细打分，兼顾速度与准确。
+    """
     query_embedding = await embed_query(question)
     async with pool.acquire() as conn:
         rows = await documents.search_chunks(
-            conn, project_id, query_embedding, top_k
+            conn, project_id, query_embedding, RECALL_SIZE
         )
-    return [r["content"] for r in rows]
+    candidates = [r["content"] for r in rows]
+    return await rerank(question, candidates, top_k)

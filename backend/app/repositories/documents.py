@@ -71,6 +71,29 @@ async def delete_document(conn: asyncpg.Connection, document_id) -> None:
     await conn.execute("DELETE FROM documents WHERE id = $1", document_id)
 
 
+async def search_chunks_with_doc(
+    conn: asyncpg.Connection, project_id, query_embedding: list[float], top_k: int
+) -> list[asyncpg.Record]:
+    """检索并带出每块所属文档标题，供离线评测判断「命中的是不是正确资料」。
+
+    与线上主检索(search_chunks)分开：评测需要文档归属信息，主检索不需要，
+    各取所需、互不影响。
+    """
+    return await conn.fetch(
+        """
+        SELECT c.content, d.title
+        FROM chunks c
+        JOIN documents d ON d.id = c.document_id
+        WHERE d.project_id = $1
+        ORDER BY c.embedding <=> $2::vector
+        LIMIT $3
+        """,
+        project_id,
+        _to_vector_literal(query_embedding),
+        top_k,
+    )
+
+
 async def search_chunks(
     conn: asyncpg.Connection, project_id, query_embedding: list[float], top_k: int
 ) -> list[asyncpg.Record]:

@@ -11,6 +11,7 @@
 - **崩溃自动恢复**：worker 抢租约执行、定时心跳续约；进程崩了心跳停更，后台 reaper 扫到超时租约会自动把任务重投给活着的 worker。
 - **SSE 流式 + 晚连补读**：答案逐字实时推送；即使客户端在执行完成后才连上，也能从数据库补读到完整结果。
 - **RAG 可观测**：检索命中的资料原文先于正文推出，答案上方展示"本次检索到 N 条资料"，可展开看原文。
+- **两阶段检索 + 可量化评测**：向量召回后接 cross-encoder 重排取 top-k，配一套带标注问答集的评测脚本，用 Recall / MRR / nDCG 量化重排收益与延迟代价。
 - **Skill + MCP 双工具**：本地函数工具(计算器/时间)与独立进程的 MCP 工具(天气)用同一套机制挂到 Agent 上。
 - **项目分区**：按项目归档会话与资料，同项目多 Agent 共享一份知识库，密钥不内置、由用户自行配置。
 
@@ -69,19 +70,21 @@ flowchart LR
 
 ## 崩溃恢复：租约 + 心跳 + reaper
 
-正在执行的任务必须有明确的执行者(租约)和存活证明(心跳)。worker 崩溃后心跳停更，后台 reaper 扫到超时租约就把任务重投给活着的 worker，任务不会永远悬着。
+正在执行的任务必须有明确的执行者(租约)和存活证明(心跳)。任务创建时为 `pending`(待认领)，worker 抢到才转 `running`。reaper 兜底两类"孤儿"：执行中崩溃(心跳停更)的，和创建后一直没被认领的(投递失败、从没进过队列)，都打回 `pending` 重投给活着的 worker，任务不会永远悬着。
 
 ```mermaid
 flowchart LR
-    C1["抢租约<br/>记录执行者"] --> HB["每 2s 心跳续约"]
+    NEW["新建 run<br/>pending 待认领"] --> C1["抢租约<br/>转 running"]
+    C1 --> HB["每 2s 心跳续约"]
     HB --> OK["正常收尾<br/>置终态"]
     HB -. "进程崩溃,心跳停更" .-> RP["reaper 每 5s 扫描"]
-    RP --> E{"心跳超时<br/>10s?"}
-    E -- "是" --> CL["清租约 → 重投队列"]
+    NEW -. "投递失败,一直没人认领" .-> RP
+    RP --> E{"超时 10s?"}
+    E -- "是" --> CL["打回 pending → 重投队列"]
     CL --> C2["其他 worker 接管"]
 ```
 
-续约间隔(2s)远小于超时阈值(10s)，给网络抖动留足余量，避免误判还活着的 worker。
+续约间隔(2s)远小于超时阈值(10s)，给网络抖动留足余量，避免误判还活着的 worker。抢占以状态为原子闸门：重复投递或 reaper 重投时，只有第一个能把 run 从 `pending` 翻成 `running`，其余落空，不会两个 worker 跑同一个任务。
 
 ## RAG 检索与可观测
 
@@ -98,13 +101,30 @@ flowchart LR
 
 检索按项目圈定，只在本项目资料里找；关闭检索的 Agent(通用助手)直接跳过这一步，方便对照 RAG 效果。
 
+## 两阶段检索与评测
+
+单纯向量召回按语义相似度排序，语义接近但答非所问的块可能排在前面。这里在召回后加一层 cross-encoder 重排：先向量召回较多候选，再由重排模型对"问题-候选"逐对精排，取前几条注入上下文。
+
+```mermaid
+flowchart LR
+    Q["用户提问"] --> R1["向量召回<br/>top-20 候选"]
+    R1 --> R2["cross-encoder 重排<br/>逐对精排"]
+    R2 --> R3["取 top-k<br/>注入上下文"]
+```
+
+配套一套人工标注的问答集(埋了易混淆的跨类干扰项)和评测脚本，用 Recall@k / MRR / nDCG@k 对比"纯向量"与"向量+重排"，并分别报告延迟。实测重排把 top-1 命中率显著拉高，代价是每次查询增加约数百毫秒——脚本把收益和代价都摆在明面上，而不是只报好看的数字。
+
+```bash
+docker compose exec worker python -m app.eval.rag_eval
+```
+
 ## 数据模型
 
 把"用户请求"和"系统执行"拆成两个状态模型：
 
 - **messages**：会话里展示的问答文本；助手回复绑定 `request_id`，晚连的客户端据此精确取回本次结果。
 - **agent_run_requests**（用户视角）：一提问就落一条并立即返回，记录状态 queued / dispatched / done / failed。
-- **agent_runs**（系统视角）：请求排到队头真正开跑时才创建，记录一次执行的生命周期与租约信息。
+- **agent_runs**（系统视角）：请求排到队头真正开跑时才创建，状态 pending / running / done / failed，记录一次执行的生命周期与租约信息。
 - **projects / agents / threads**：项目分区、多 Agent、会话；调度键的 Agent 段来自会话绑定的 Agent。
 - **documents / chunks**：资料与向量块，归属项目、级联删除。
 - **llm_config**：单行表，保存当前生效的 OpenAI 兼容配置，供 api 与 worker 两个进程读取同一份。
@@ -144,7 +164,8 @@ backend/
     routers/        # 路由层:参数校验与转发
     services/       # 用例层:调度 / RAG / SSE / 配置等业务流程
     repositories/   # 持久化层:纯 SQL
-    agent/          # LangGraph 图 + Skill + MCP + 向量化
+    agent/          # LangGraph 图 + Skill + MCP + 向量化 + 重排
+    eval/           # 检索评测:标注问答集 + Recall/MRR/nDCG 脚本
     worker.py       # 独立执行进程:租约 / 心跳 / 崩溃恢复
     schema.sql      # 建表(幂等)
 web/

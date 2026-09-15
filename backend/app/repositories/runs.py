@@ -25,17 +25,18 @@ async def create_run(conn: asyncpg.Connection, request_id) -> asyncpg.Record:
 async def claim_run(
     conn: asyncpg.Connection, run_id, lease_owner: str
 ) -> asyncpg.Record | None:
-    """worker 抢占租约：只有还没人认领的 run 能被抢到，返回 None 表示抢占失败。
+    """worker 抢占租约：只有 pending 的 run 能被抢到，抢到即转 running，返回 None 表示抢占失败。
 
-    并发关键：WHERE lease_owner IS NULL 让抢占是原子的——
-    Redis 若重复投递同一条消息，只有第一个 worker 能抢到，其余拿到 None 直接丢弃，
-    不会出现两个 worker 跑同一个 run。
+    并发关键：WHERE status = 'pending' 让抢占是原子的——
+    Redis 若重复投递同一条消息、或 reaper 重投了同一条，只有第一个 worker 能把它从
+    pending 翻成 running，其余拿到 None 直接丢弃，不会出现两个 worker 跑同一个 run。
+    reaper 接管孤儿时会把 run 打回 pending，所以这里用 status 而非 lease_owner 作为闸门。
     """
     return await conn.fetchrow(
         """
         UPDATE agent_runs
-        SET lease_owner = $2, heartbeat_at = now()
-        WHERE id = $1 AND lease_owner IS NULL
+        SET status = 'running', lease_owner = $2, heartbeat_at = now()
+        WHERE id = $1 AND status = 'pending'
         RETURNING id, request_id, status
         """,
         run_id,
@@ -110,19 +111,29 @@ async def get_run(conn: asyncpg.Connection, run_id) -> asyncpg.Record | None:
 async def reap_expired_leases(
     conn: asyncpg.Connection, lease_timeout_seconds: int
 ) -> list:
-    """接管失联 worker 的 run：清空心跳超时者的租约，返回需重投的 run_id 列表。
+    """接管两类孤儿 run：打回 pending 并返回需重投的 run_id 列表。
 
-    崩溃恢复关键：worker 崩了心跳就停更，超过 lease_timeout 即判定失联。
-    这里原子地把过期租约清回 NULL（WHERE 再次校验超时，避免误接管刚续约的），
-    清成功的才返回，交给上层重新投递让活着的 worker 接管。
+    崩溃恢复关键：一次捞两种失联情形，都靠"超时"判定并原子打回 pending，
+    让 claim_run 能重新抢占（claim 以 status='pending' 为闸门）：
+      1) running 但心跳停更超过 lease_timeout —— worker 执行中崩了/卡死；
+      2) pending 但建出来超过 lease_timeout 仍没人认领 —— "先 commit 后 enqueue"
+         在 enqueue 处失败(Redis 抖动/worker 全挂)，这条 run 从没进过队列。
+    WHERE 内再次校验超时，避免误接管刚续约或刚建正要被认领的 run；
+    重投是幂等的：即便这条其实已被某 worker 取走，claim_run 的原子闸门会让重复投递落空。
     """
     rows = await conn.fetch(
         """
         UPDATE agent_runs
-        SET lease_owner = NULL
-        WHERE status = 'running'
-          AND lease_owner IS NOT NULL
-          AND heartbeat_at < now() - make_interval(secs => $1)
+        SET status = 'pending', lease_owner = NULL
+        WHERE (
+                status = 'running'
+                AND lease_owner IS NOT NULL
+                AND heartbeat_at < now() - make_interval(secs => $1)
+              )
+           OR (
+                status = 'pending'
+                AND created_at < now() - make_interval(secs => $1)
+              )
         RETURNING id
         """,
         lease_timeout_seconds,
