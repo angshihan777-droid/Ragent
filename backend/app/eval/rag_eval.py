@@ -19,8 +19,7 @@ import asyncpg
 from app.agent.embedding import embed_query
 from app.agent.rerank import rerank
 from app.config import get_settings
-from app.eval.corpus import CORPUS
-from app.eval.dataset import GOLDEN_SET
+from app.eval.dataset import CORPUS, GOLDEN_SET
 from app.repositories import documents, projects
 from app.services import rag
 
@@ -111,9 +110,7 @@ async def _evaluate(conn, project_id, method):
     ndcg = {k: 0.0 for k in K_LIST}
     rr_sum = 0.0
     total_ms, rerank_ms = [], []
-    # 分类统计：{类别: [命中数, 总数]}，用 Recall@3 定位哪类检索最弱
-    cat = {}
-    for question, gold, category in GOLDEN_SET:
+    for question, gold in GOLDEN_SET:
         titles, timing = await method(conn, project_id, question)
         for k in K_LIST:
             recall[k] += _recall_at_k(titles, gold, k)
@@ -121,9 +118,6 @@ async def _evaluate(conn, project_id, method):
         rr_sum += _rr(titles, gold)
         total_ms.append(timing["embed"] + timing["recall"] + timing["rerank"])
         rerank_ms.append(timing["rerank"])
-        c = cat.setdefault(category, [0, 0])
-        c[0] += _recall_at_k(titles, gold, 3)
-        c[1] += 1
     return {
         "recall": {k: recall[k] / n for k in K_LIST},
         "ndcg": {k: ndcg[k] / n for k in K_LIST},
@@ -131,7 +125,6 @@ async def _evaluate(conn, project_id, method):
         "p50": _percentile(total_ms, 50),
         "p95": _percentile(total_ms, 95),
         "rerank_p50": _percentile(rerank_ms, 50),
-        "cat": {c: v[0] / v[1] for c, v in cat.items()},
     }
 
 
@@ -139,7 +132,7 @@ def _print_report(v: dict, r: dict) -> None:
     """打印对照报告：指标表 + 延迟 + 分类短板。"""
     n = len(GOLDEN_SET)
     print(f"\n{'='*56}")
-    print(f"RAG 检索评测报告  (语料 {len(CORPUS)} 篇 / 问题 {n} 条)")
+    print(f"RAG 检索评测报告  (语料 {len(CORPUS)} 段 / 问题 {n} 条)")
     print(f"{'='*56}\n")
 
     def row(label, vv, rr, fmt):
@@ -161,11 +154,6 @@ def _print_report(v: dict, r: dict) -> None:
     print(f"  纯向量        p50={v['p50']:.1f}ms  p95={v['p95']:.1f}ms")
     print(f"  向量+rerank   p50={r['p50']:.1f}ms  p95={r['p95']:.1f}ms  (其中 rerank p50={r['rerank_p50']:.1f}ms)")
 
-    print("\n分类 Recall@3(定位检索短板):")
-    cats = sorted(v["cat"].keys())
-    print(f"  {'类别':<8}{'纯向量':>10}{'向量+rerank':>14}")
-    for c in cats:
-        print(f"  {c:<8}{v['cat'][c]:>10.0%}{r['cat'][c]:>14.0%}")
     print()
 
 
@@ -181,7 +169,7 @@ async def main() -> None:
             )
             project_id = proj["id"]
         # 2) 入库易混淆语料(走正规切块+向量化流程)
-        print(f"入库评测语料 {len(CORPUS)} 篇...", flush=True)
+        print(f"入库评测语料 {len(CORPUS)} 段...", flush=True)
         for title, content in CORPUS:
             await rag.ingest_document(pool, project_id, title, content)
         # 3) 两套方案各跑一遍
