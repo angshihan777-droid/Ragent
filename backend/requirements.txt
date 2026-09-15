@@ -1,0 +1,12 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+asyncpg==0.30.0
+redis==5.2.1
+pydantic-settings==2.7.1
+langgraph==0.2.62
+langchain-openai==0.2.14
+# 本地 embedding：ONNX 运行时，无需 PyTorch，容器更小
+fastembed==0.4.2
+# M9 MCP：官方适配器把 MCP 工具转成 LangChain 工具；mcp 是协议 SDK(含 FastMCP)
+langchain-mcp-adapters==0.1.9
+mcp==1.9.4

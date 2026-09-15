@@ -1,0 +1,49 @@
+/* 全局基础样式：一处定义配色与排版，页面组件只写自己的局部样式。
+   配色仿 Claude 网页版：暖米白背景 + 陶土橙点缀色 + 暖灰文字，克制留白。 */
+:root {
+  --bg: #faf9f5;           /* 暖米白主背景 */
+  --panel: #f0eee6;        /* 侧栏/次级面板的略深米色 */
+  --card: #ffffff;
+  --border: #e7e4d8;       /* 暖灰边框，比冷灰更柔和 */
+  --text: #2d2d2a;         /* 暖黑正文 */
+  --muted: #83817a;        /* 暖灰次要文字 */
+  --primary: #c15f3c;      /* Claude 陶土橙点缀色 */
+  --primary-hover: #a94f30;
+  --primary-soft: #f6ece6;  /* 陶土橙的浅色底，用于标签/高亮块 */
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Segoe UI", -apple-system, "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+button {
+  font: inherit;
+  cursor: pointer;
+  border: none;
+  border-radius: 9px;
+  padding: 10px 18px;
+  background: var(--primary);
+  color: #fff;
+  transition: background 0.15s, opacity 0.15s;
+}
+button:hover:not(:disabled) { background: var(--primary-hover); }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+input, textarea, select {
+  font: inherit;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--text);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(193, 95, 60, 0.12);
+}
+textarea { resize: vertical; }

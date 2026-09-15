@@ -1,0 +1,70 @@
+# 开发拓扑的事实来源：一条命令拉起三件套，服务名即容器内网地址
+services:
+  postgres:
+    # 直接用 pgvector 镜像，省得 M7 做 RAG 时再手动装扩展
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ragent
+      POSTGRES_PASSWORD: ragent
+      POSTGRES_DB: ragent
+    # 不映射宿主机端口：api 走内网用服务名 postgres 直连即可，避免和本机已有服务撞端口
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ragent"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    # 同理不对外暴露 6379，避免和本机已占用的 Redis 端口冲突
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: ./backend
+    ports:
+      # 只有 api 需要对外：你用浏览器访问它
+      - "8000:8000"
+    environment:
+      # 显式写出连接串，服务名 postgres/redis 即容器内地址
+      DATABASE_URL: postgresql://ragent:ragent@postgres:5432/ragent
+      REDIS_URL: redis://redis:6379/0
+    # LLM 密钥等敏感配置从 .env 读，不写进本文件也不进镜像
+    env_file:
+      - ./backend/.env
+    volumes:
+      # 挂载源码，配合 --reload 改代码即生效
+      - ./backend/app:/app/app
+    depends_on:
+      # 等依赖 healthcheck 通过再启动，避免启动瞬间连不上
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    # 和 api 同一份镜像/代码，只是入口换成 worker 主循环
+    build: ./backend
+    command: ["python", "-m", "app.worker"]
+    environment:
+      DATABASE_URL: postgresql://ragent:ragent@postgres:5432/ragent
+      REDIS_URL: redis://redis:6379/0
+    # worker 才是真正调 LLM 的进程，同样注入 .env
+    env_file:
+      - ./backend/.env
+    volumes:
+      # 同样挂源码，改 worker 代码后重启容器即生效
+      - ./backend/app:/app/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  pgdata:
