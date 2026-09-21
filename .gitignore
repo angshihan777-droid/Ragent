@@ -8,3 +8,6 @@ dist/
 web/dev.out.log
 web/dev.err.log
 _shot.png
+
+web/vite.out.log
+web/vite.err.log

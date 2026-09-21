@@ -152,7 +152,7 @@ docker compose exec worker python -m app.eval.rag_eval
 docker compose up --build
 ```
 
-一条命令拉起 4 个容器：`postgres`(pgvector) / `redis` / `api` / `worker`。首次启动自动建表，并在库为空时播种一个示例项目(含 3 个 Agent 与 3 篇示例资料)。
+一条命令拉起 4 个容器：`postgres`(pgvector) / `redis` / `api` / `worker`。首次启动自动建表；库中不预置任何示例数据，项目、Agent 与资料均由用户自行创建。
 
 - API：http://localhost:8000
 - 健康检查：`GET /health`(进程存活)、`GET /ready`(依赖连通)

@@ -12,7 +12,7 @@ import redis.asyncio as aioredis
 
 from app.agent.graph import stream_agent
 from app.config import get_settings
-from app.events import publish_done, publish_sources, publish_token
+from app.events import publish_done, publish_sources, publish_step, publish_token
 from app.queue import QUEUE_KEY, enqueue_run
 from app.repositories import messages, requests, runs
 from app.services.scheduler import try_dispatch_group
@@ -64,6 +64,10 @@ async def _execute(
     async for kind, data in stream_agent(
         question, pool, project_id, use_rag, system_prompt
     ):
+        # step 是过程链条：某节点开始/完成，先于/伴随正文到达，推给右栏实时展示
+        if kind == "step":
+            await publish_step(redis, request_id, data)
+            continue
         # sources 先于正文到达：把本次检索命中的资料单独推一条，前端在答案上方展示
         if kind == "sources":
             await publish_sources(redis, request_id, data)

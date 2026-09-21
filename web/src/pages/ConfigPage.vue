@@ -122,8 +122,8 @@ h2 { margin: 0 0 4px; }
 .hint { color: var(--muted); margin: 0 0 20px; font-size: 14px; }
 label { display: block; margin: 14px 0 6px; font-size: 14px; font-weight: 500; }
 .actions { margin-top: 16px; }
-.ghost { background: var(--primary-soft); color: var(--primary); }
-.ghost:hover:not(:disabled) { background: #f0ddd2; }
-.ok { margin-top: 16px; padding: 12px 14px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; color: #15803d; font-size: 14px; }
-.err { margin-top: 16px; padding: 12px 14px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; color: #b91c1c; font-size: 14px; }
+.ghost { background: var(--panel2); color: var(--text); border: 1px solid var(--border); }
+.ghost:hover:not(:disabled) { background: var(--line); }
+.ok { margin-top: 16px; padding: 12px 14px; background: var(--accent-soft); border: 1px solid rgba(16,163,127,0.35); border-radius: 10px; color: var(--accent-d); font-size: 14px; }
+.err { margin-top: 16px; padding: 12px 14px; background: rgba(224,92,92,0.12); border: 1px solid rgba(224,92,92,0.35); border-radius: 10px; color: #c0392b; font-size: 14px; }
 </style>

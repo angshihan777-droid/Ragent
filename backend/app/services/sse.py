@@ -36,6 +36,12 @@ def _format_sources(sources: list) -> str:
     return f"event: sources\ndata: {data}\n\n"
 
 
+def _format_step(step: dict) -> str:
+    """格式化一条过程链条事件（step），前端据此在右栏更新步骤进度与转圈。"""
+    data = json.dumps({"step": step})
+    return f"event: step\ndata: {data}\n\n"
+
+
 async def stream_request(
     pool: asyncpg.Pool, redis: aioredis.Redis, request_id
 ):
@@ -66,6 +72,9 @@ async def stream_request(
                 continue
             payload = json.loads(msg["data"])
             # sources 是检索命中，先于正文到达；token 是回复增量：两者都边收边转发、不结束
+            if payload["type"] == "step":
+                yield _format_step(payload["step"])
+                continue
             if payload["type"] == "sources":
                 yield _format_sources(payload["sources"])
                 continue

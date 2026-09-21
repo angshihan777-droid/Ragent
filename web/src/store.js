@@ -11,6 +11,13 @@ export const store = reactive({
   threads: [],      // 当前项目下的会话
   currentThreadId: null,
 
+  // LLM 配置：左栏展示当前模型并支持切换；models 是可切换的候选列表
+  llm: { base_url: "", model: "", key_set: false },
+  models: [],
+
+  // 知识库「图书馆」：跨项目看所有资料，也能按项目筛选
+  library: [],        // [{project_id, project_name, id, title, chunk_count, created_at}]
+
   get currentProject() {
     return this.projects.find((p) => p.id === this.currentProjectId) || null;
   },
@@ -55,6 +62,30 @@ export const store = reactive({
     await api.deleteThread(id);
     if (this.currentThreadId === id) this.currentThreadId = null;
     await this.loadProjectDetail();
+  },
+
+  async loadLLM() {
+    // 读当前生效配置；已保存的模型先进候选列表，未拉取远端列表时也能展示/切换
+    this.llm = await api.getLLMConfig();
+    if (this.llm.model && !this.models.includes(this.llm.model)) {
+      this.models = [this.llm.model, ...this.models];
+    }
+  },
+
+  async switchModel(model) {
+    // 左栏一键切模型：空密钥表示不改密钥，保留库里原值
+    await api.saveLLMConfig(this.llm.base_url, model, "");
+    this.llm = await api.getLLMConfig();
+  },
+
+  async loadLibrary() {
+    // 图书馆视图：汇总所有项目的资料，标注归属项目，前端可按项目筛选
+    const all = [];
+    for (const p of this.projects) {
+      const docs = await api.listDocuments(p.id);
+      for (const d of docs) all.push({ ...d, project_id: p.id, project_name: p.name });
+    }
+    this.library = all;
   },
 
   agentOf(thread) {

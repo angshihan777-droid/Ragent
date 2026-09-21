@@ -71,7 +71,8 @@ async def _retrieve_node(state: AgentState, config: RunnableConfig) -> AgentStat
         chunks = await rag.retrieve(pool, cfg["project_id"], question)
         if chunks:
             sources = chunks  # 命中的原文单独留一份，供对外展示「检索到了什么」
-            context = "\n\n".join(chunks)
+            # 拼给模型的是原文；标题只用于前端溯源展示，不喂给模型避免噪声
+            context = "\n\n".join(c["content"] for c in chunks)
             system_msgs.append(SystemMessage(
                 content=f"参考资料:\n{context}\n\n请优先根据上面的参考资料回答用户问题。"
             ))
@@ -122,6 +123,15 @@ def _build_graph():
 
 
 # 图在首次用到时才编译：MCP 工具需先异步拉取并缓存，才能正确构建 tools 节点。
+# 图节点 → 用户可读的步骤名：右栏「过程链条」按节点边界实时展示进行到哪一步。
+# 只映射对外有意义的三个主节点，内部 RunnableSequence 等事件不展示。
+STEP_LABELS = {
+    "retrieve": "检索知识库",
+    "agent": "模型思考",
+    "tools": "调用工具",
+}
+
+
 _GRAPH = None
 
 
@@ -155,6 +165,13 @@ async def stream_agent(question: str, pool, project_id, use_rag: bool, system_pr
         version="v2",
     ):
         kind = event["event"]
+        name = event.get("name")
+        # 节点开始/结束落在 STEP_LABELS 里的三个主节点上时，推「过程链条」步骤事件：
+        # start=该步开始(前端转圈)，end=该步完成(前端打勾)。用户借此看到执行进行到哪。
+        if kind == "on_chain_start" and name in STEP_LABELS:
+            yield ("step", {"key": name, "label": STEP_LABELS[name], "status": "running"})
+        elif kind == "on_chain_end" and name in STEP_LABELS:
+            yield ("step", {"key": name, "label": STEP_LABELS[name], "status": "done"})
         # 检索节点结束：把命中资料先于正文吐出，前端可在答案上方展示「检索到了什么」
         if kind == "on_chain_end" and event.get("name") == "retrieve":
             hits = event["data"]["output"].get("sources") or []

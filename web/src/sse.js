@@ -2,7 +2,7 @@
 // 决策：用 fetch + ReadableStream 而非 EventSource。
 // 面试理由：EventSource 只能 GET 且流结束后会自动重连、重复触发；
 // 我们的链路是「先 POST 拿 id 再 GET stream」，用 reader 能读完 done 就主动收手，不重连。
-export async function readStream(url, onToken, onSources) {
+export async function readStream(url, onToken, onSources, onStep) {
   const res = await fetch(url);
   if (!res.ok) throw new Error("SSE 连接失败: " + res.status);
   const reader = res.body.getReader();
@@ -22,6 +22,11 @@ export async function readStream(url, onToken, onSources) {
       const dataLine = lines.find((l) => l.startsWith("data:"));
       if (!dataLine) continue;
       const data = JSON.parse(dataLine.slice(5).trim());
+      if (lines.some((l) => l === "event: step")) {
+        // 过程链条：某节点开始(running)/完成(done)，回调给右栏更新步骤进度
+        if (onStep) onStep(data.step);
+        continue;
+      }
       if (lines.some((l) => l === "event: sources")) {
         // 检索命中：先于正文到达，回调给页面展示「本次检索到了什么」
         if (onSources) onSources(data.sources);

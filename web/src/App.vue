@@ -7,7 +7,11 @@ import { RouterView } from "vue-router";
 import Sidebar from "./components/Sidebar.vue";
 import { store } from "./store.js";
 
-onMounted(() => store.loadProjects());
+onMounted(async () => {
+  await store.loadProjects();
+  // 左栏要展示当前模型，进应用就读一次生效配置
+  await store.loadLLM();
+});
 </script>
 
 <template>

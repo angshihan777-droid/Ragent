@@ -10,3 +10,7 @@ fastembed==0.4.2
 # M9 MCP：官方适配器把 MCP 工具转成 LangChain 工具；mcp 是协议 SDK(含 FastMCP)
 langchain-mcp-adapters==0.1.9
 mcp==1.9.4
+# 附件解析：PDF 用 pypdf、Word(.docx) 用 python-docx；.md/.txt 直接按文本读。
+# 仅在真正上传对应类型文件时惰性 import，不拖慢启动。
+pypdf==5.1.0
+python-docx==1.1.2

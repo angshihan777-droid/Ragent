@@ -33,6 +33,16 @@ async def publish_sources(redis: aioredis.Redis, request_id, sources: list[str])
     await redis.publish(request_channel(request_id), payload)
 
 
+async def publish_step(redis: aioredis.Redis, request_id, step: dict) -> None:
+    """发布一条「过程链条」步骤事件：某节点开始(running)或完成(done)。
+
+    type=step 让 SSE 端和前端把它与检索命中/吐字/终态区分开：仅用于右栏实时展示
+    执行进行到哪一步，不落库、不参与终态兜底，晚连的客户端丢了也不影响最终答案。
+    """
+    payload = json.dumps({"type": "step", "step": step})
+    await redis.publish(request_channel(request_id), payload)
+
+
 async def publish_done(
     redis: aioredis.Redis, request_id, status: str, content: str | None, error: str | None
 ) -> None:

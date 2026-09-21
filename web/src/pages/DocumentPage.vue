@@ -86,17 +86,17 @@ async function remove(id, t) {
 h2 { margin: 0 0 4px; }
 h3 { margin: 28px 0 10px; font-size: 15px; }
 .hint { color: var(--muted); margin: 0 0 20px; font-size: 14px; }
-.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+.card { background: #fff; border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-sm); padding: 22px; }
 label { display: block; margin: 12px 0 6px; font-size: 14px; font-weight: 500; }
 .actions { margin-top: 16px; }
 .docs { list-style: none; margin: 0; padding: 0; }
-.docs li { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; background: var(--card); }
+.docs li { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 8px; background: var(--panel2); }
 .meta { display: flex; align-items: center; gap: 10px; }
 .dt { font-weight: 500; }
-.dc { font-size: 12px; color: var(--muted); background: #f1f5f9; padding: 1px 8px; border-radius: 999px; }
+.dc { font-size: 12px; color: var(--muted); background: rgba(120,120,140,0.14); padding: 1px 8px; border-radius: 999px; }
 .del { background: #fef2f2; color: #b91c1c; }
 .del:hover { background: #fee2e2; }
 .empty { justify-content: center; color: var(--muted); }
-.ok { margin-top: 14px; padding: 10px 12px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; color: #15803d; font-size: 14px; }
-.err { margin-top: 14px; padding: 10px 12px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; color: #b91c1c; font-size: 14px; }
+.ok { margin-top: 14px; padding: 10px 12px; background: var(--accent-soft); border: 1px solid rgba(16,163,127,0.35); border-radius: 10px; color: var(--accent-d); font-size: 14px; }
+.err { margin-top: 14px; padding: 10px 12px; background: rgba(224,92,92,0.12); border: 1px solid rgba(224,92,92,0.35); border-radius: 10px; color: #c0392b; font-size: 14px; }
 </style>

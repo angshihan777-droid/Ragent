@@ -59,16 +59,20 @@ async def delete_document(pool: asyncpg.Pool, document_id) -> None:
 
 async def retrieve(
     pool: asyncpg.Pool, project_id, question: str, top_k: int = 3
-) -> list[str]:
+) -> list[dict]:
     """两阶段检索：先向量召回 RECALL_SIZE 个候选，再 rerank 精排出 top_k。
 
     先召回后精排：向量检索快但粗，负责从全量里捞回可能相关的候选；
     rerank 慢但准，只在这一小批候选上做精细打分，兼顾速度与准确。
+    返回每块的原文和所属文档标题，供前端「点击溯源」定位到具体来源文件。
     """
     query_embedding = await embed_query(question)
     async with pool.acquire() as conn:
-        rows = await documents.search_chunks(
+        rows = await documents.search_chunks_with_doc(
             conn, project_id, query_embedding, RECALL_SIZE
         )
+    # 精排在原文上做；再按精排后的原文映射回其文档标题（块原文唯一，足以定位来源）
+    title_of = {r["content"]: r["title"] for r in rows}
     candidates = [r["content"] for r in rows]
-    return await rerank(question, candidates, top_k)
+    ranked = await rerank(question, candidates, top_k)
+    return [{"title": title_of.get(c, "未知来源"), "content": c} for c in ranked]

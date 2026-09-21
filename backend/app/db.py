@@ -30,9 +30,6 @@ async def lifespan(app: FastAPI):
     # 启动即建表：schema.sql 全用 IF NOT EXISTS，重复启动安全
     async with pg_pool.acquire() as conn:
         await conn.execute(_SCHEMA_PATH.read_text(encoding="utf-8"))
-    # 建表后播种 demo（幂等：库里已有项目则跳过），让验收者一进来就有得玩
-    from app.services.seed import seed_demo_if_empty
-    await seed_demo_if_empty(pg_pool)
     try:
         yield
     finally:

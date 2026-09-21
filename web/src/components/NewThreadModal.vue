@@ -92,16 +92,16 @@ async function submit() {
 </template>
 
 <style scoped>
-.mask { position: fixed; inset: 0; background: rgba(45,45,42,0.42); display: flex; align-items: center; justify-content: center; z-index: 50; }
-.modal { background: var(--card); border-radius: 14px; padding: 24px; width: 460px; max-width: 92vw; max-height: 88vh; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.25); }
+.mask { position: fixed; inset: 0; background: rgba(15,15,25,0.32); display: flex; align-items: center; justify-content: center; z-index: 50; }
+.modal { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 26px; width: 460px; max-width: 92vw; max-height: 88vh; overflow-y: auto; box-shadow: var(--shadow); }
 h3 { margin: 0 0 8px; }
 label { display: block; margin: 12px 0 6px; font-size: 13px; font-weight: 500; }
 .check { display: flex; align-items: center; gap: 8px; font-weight: 400; }
 .check input { width: auto; }
-.link { background: none; border: none; color: var(--primary); padding: 10px 0 0; cursor: pointer; font-size: 14px; }
+.link { background: none; border: none; color: var(--accent); padding: 10px 0 0; cursor: pointer; font-size: 14px; box-shadow: none; }
 .new-agent { margin-top: 8px; padding: 12px; border: 1px dashed var(--border); border-radius: 10px; }
 .mini-actions { margin-top: 12px; display: flex; justify-content: flex-end; gap: 8px; }
-.err { margin-top: 12px; color: #b91c1c; font-size: 14px; }
+.err { margin-top: 12px; color: #c0392b; font-size: 14px; }
 .actions { margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px; }
 .ghost { background: rgba(0,0,0,0.05); color: var(--muted); }
 .ghost:hover:not(:disabled) { background: rgba(0,0,0,0.09); }

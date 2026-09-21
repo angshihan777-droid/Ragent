@@ -47,6 +47,14 @@ export const api = {
   listDocuments: (projectId) => get("/documents?project_id=" + projectId),
   ingestDocument: (projectId, title, content) =>
     send("POST", "/documents", { project_id: projectId, title, content }),
+  // 文件入库：PDF/Word/Markdown/txt，走 multipart，后端解析成文本再切块向量化
+  uploadDocument: (projectId, fileObj, title) => {
+    const fd = new FormData();
+    fd.append("project_id", projectId);
+    fd.append("file", fileObj);
+    if (title) fd.append("title", title);
+    return fetch(BASE + "/documents/upload", { method: "POST", body: fd }).then(toJson);
+  },
   deleteDocument: (id) => send("DELETE", "/documents/" + id),
 
   // ---- 提问 ----
