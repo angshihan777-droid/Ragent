@@ -22,7 +22,7 @@ function onEnter(event) {
 .composer-area { width: min(100%, 820px); margin: 0 auto; padding: 12px 0 0; }
 .composer { background: #fff; border: 1px solid var(--border); border-radius: 18px; padding: 12px 14px; box-shadow: 0 4px 24px #162d2010; }
 .composer:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-textarea { border: 0; background: transparent; padding: 7px 4px; resize: none; min-height: 64px; max-height: 25dvh; font-size: 14px; line-height: 1.7; }
+textarea { border: 0; background: transparent; padding: 7px 4px; resize: none; min-height: 64px; max-height: 25dvh; font-size: 15px; line-height: 1.7; }
 textarea:focus { box-shadow: none; }
 .composer-bottom { display: flex; justify-content: space-between; align-items: center; }
 .scope { font-size: 12px; color: var(--muted); text-decoration: none; padding: 5px 9px; border-radius: 6px; background: var(--panel2); max-width: 80%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

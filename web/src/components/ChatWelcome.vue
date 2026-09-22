@@ -29,7 +29,7 @@ h1 { font-size: clamp(25px, 3vw, 34px); font-weight: 600; letter-spacing: -1px; 
 .description { font-size: 14px; line-height: 1.9; color: var(--muted); margin-bottom: 30px; }
 .start-card { border: 1px solid var(--border); border-radius: 16px; padding: 20px; background: white; text-align: left; box-shadow: var(--shadow-sm); }
 .project-line { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }.project-icon { background: var(--panel2); padding: 9px 13px; border-radius: 9px; color: var(--accent); font-size: 22px; }
-strong { font-size: 14px; font-weight: 550; overflow-wrap: anywhere; }small { display: block; color: var(--muted); font-size: 12px; margin-top: 5px; }button { width: 100%; font-size: 14px; }button span { float: right; }
+strong { font-size: 15px; font-weight: 650; overflow-wrap: anywhere; }small { display: block; color: var(--muted); font-size: 12px; margin-top: 5px; }button { width: 100%; font-size: 14px; }button span { float: right; }
 .welcome-links { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; text-align: left; }.welcome-links a { color: var(--text); text-decoration: none; border: 1px solid var(--line); padding: 16px; border-radius: 12px; }.welcome-links a:hover { border-color: var(--accent); background: var(--accent-soft); }.welcome-links span { float: right; color: var(--accent); }
 .history-note { color: var(--faint); font-size: 11px; margin-top: 24px; }.error { color: #a33d32; }
 @media (max-width: 500px) { .welcome { padding: 24px 16px; }.welcome-links { grid-template-columns: 1fr; } }

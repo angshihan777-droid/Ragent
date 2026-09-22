@@ -42,10 +42,10 @@ const panelCollapsed = usePreference("ragent.panelCollapsed", false);
 .chat-wrap { min-height: 0; display: flex; height: 100%; width: 100%; background: var(--panel); }
 .chat { display: flex; flex-direction: column; height: 100%; flex: 1; min-width: 0; overflow: hidden; }
 .chat-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 18px 26px; border-bottom: 1px solid var(--line); }
-.titles { min-width: 0; }.breadcrumb { font-size: 11px; color: var(--muted); }.breadcrumb span { color: var(--faint); }h1 { margin: 5px 0 0; font-size: 16px; font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.titles { min-width: 0; }.breadcrumb { font-size: 11px; color: var(--muted); }.breadcrumb span { color: var(--faint); }h1 { margin: 5px 0 0; font-size: 17px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .head-actions { display: flex; gap: 4px; flex-shrink: 0; }.head-actions button { font-size: 12px; padding: 7px; }
 .list { min-height: 0; flex: 1; overflow-y: auto; padding: 24px 30px; }.message-content { max-width: 820px; margin: auto; }.empty { text-align: center; color: var(--muted); }
-.conversation-empty { text-align: center; margin: 10vh auto 40px; color: var(--muted); font-size: 13px; line-height: 1.8; }.conversation-empty span { color: var(--accent); font-size: 30px; }.conversation-empty h2 { color: var(--ink); font-size: 21px; font-weight: 500; }
+.conversation-empty { text-align: center; margin: 10vh auto 40px; color: var(--muted); font-size: 13px; line-height: 1.8; }.conversation-empty span { color: var(--accent); font-size: 30px; }.conversation-empty h2 { color: var(--ink); font-size: 23px; font-weight: 700; }
 .input-zone { padding: 0 28px 15px; }.right-rail { flex-shrink: 0; max-width: 40%; min-width: 260px; height: 100%; }
 @media (max-width: 760px) { .chat-wrap { flex-direction: column; overflow: auto; }.chat { flex: 1 0 65dvh; height: auto; }.chat-head { padding: 14px; }.list { padding: 18px 16px; }.input-zone { padding: 0 14px 12px; }.right-rail { width: 100% !important; max-width: none; min-width: 0; height: auto; }.breadcrumb { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } }
 </style>
