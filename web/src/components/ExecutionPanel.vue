@@ -25,7 +25,7 @@ const completed = computed(() => props.steps.filter(s => s.status === "done").le
       </div>
 
       <div v-if="steps.length" class="plan-title">
-        <span class="pt-ico">🗂️</span>
+        <span class="pt-ico">▧</span>
         <div class="pt-txt">
           <div class="pt-name">{{ thread?.title }}</div>
           <div class="pt-sub">{{ projectName }} · 知识库助手</div>
@@ -103,8 +103,8 @@ const completed = computed(() => props.steps.filter(s => s.status === "done").le
 
 
 h2 { margin: 0; font-size: 14px; color: var(--ink); }
-.process { height: 100%; min-height: 0; display: flex; flex-direction: column; gap: 14px; padding: 16px 12px; background: var(--panel2); overflow-y: auto; }
-.panel { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 16px; min-width: 0; }
+.process { height: 100%; min-height: 0; display: flex; flex-direction: column; gap: 14px; padding: 16px 12px; background: #fafbfa; overflow-y: auto; }
+.panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; min-width: 0; }
 .execution-card { flex: 0 0 auto; }
 .sources-card { flex: 1 0 auto; }
 .pt-txt { min-width: 0; }

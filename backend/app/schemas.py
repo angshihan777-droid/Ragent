@@ -88,6 +88,7 @@ class MessageOut(BaseModel):
     id: UUID
     role: str
     content: str
+    error: bool = False
     sources: list[dict] = Field(default_factory=list)
     steps: list[dict] = Field(default_factory=list)
     created_at: datetime

@@ -57,9 +57,16 @@ async def list_messages_by_thread(
     """按时间正序取出一个会话的全部消息，用于回放对话。"""
     return await conn.fetch(
         """
-        SELECT id, thread_id, role, content, created_at, sources, steps
-        FROM messages
-        WHERE thread_id = $1
+        SELECT id, thread_id, role, content, created_at, sources, steps, false AS error
+        FROM messages WHERE thread_id = $1
+        UNION ALL
+        SELECT q.id, q.thread_id, 'assistant', COALESCE(r.error, ''),
+               q.created_at + interval '1 microsecond', '[]'::jsonb, '[]'::jsonb, true
+        FROM agent_run_requests q
+        LEFT JOIN LATERAL (
+            SELECT error FROM agent_runs WHERE request_id=q.id ORDER BY created_at DESC LIMIT 1
+        ) r ON true
+        WHERE q.thread_id=$1 AND q.status='failed'
         ORDER BY created_at
         """,
         thread_id,

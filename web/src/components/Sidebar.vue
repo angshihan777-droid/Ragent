@@ -1,5 +1,5 @@
 <script setup>
-// 侧栏：顶部当前模型(可切换)，中部项目→会话导航，底部知识库/模型配置入口。
+// 侧栏：工作台导航、项目→多会话树，底部模型配置入口。
 // 每个项目下挂多条会话；新建项目走弹窗(引导填名称+上传首批资料)。
 import { ref, watch } from "vue";
 import { useRouter } from "vue-router";
@@ -31,7 +31,6 @@ async function newThread(projectId) {
 }
 const showNewProject = ref(false);
 const showNewThread = ref(false);
-const switchingModel = ref(false);
 
 async function pickProject(id) {
   await store.selectProject(id);
@@ -42,12 +41,6 @@ async function pickThread(projectId, id) {
   if (store.currentProjectId !== projectId) return;
   await store.selectThread(id);
   router.push("/chat");
-}
-async function onModelChange(e) {
-  // 左栏直接切模型：保存后 worker 下次执行即生效（配置以库为准）
-  switchingModel.value = true;
-  try { await store.switchModel(e.target.value); }
-  finally { switchingModel.value = false; }
 }
 async function onProjectCreated(projectId) {
   showNewProject.value = false;
@@ -77,20 +70,13 @@ async function removeThread(projectId, id, title) {
 
 <template>
   <aside class="sidebar">
-    <div class="brand">Ragent 知识库<button class="quiet collapse" aria-label="收起左栏" @click="$emit('collapse')">‹</button></div>
+    <div class="brand"><span class="brand-mark">R</span><span>Ragent<small>知识工作台</small></span><button class="quiet collapse" aria-label="收起左栏" @click="$emit('collapse')">‹</button></div>
 
-    <!-- 当前模型 + 切换：单 Agent 精简版，模型是最常调的运行期设置，常驻顶部 -->
-    <div class="model-box">
-      <div class="model-label">当前模型</div>
-      <select class="model-select" :value="store.llm.model" :disabled="switchingModel || store.models.length === 0" @change="attempt(() => onModelChange($event))">
-        <option v-if="!store.llm.model" value="">未配置</option>
-        <option v-for="m in store.models" :key="m" :value="m">{{ m }}</option>
-      </select>
-      <div class="model-hint" :class="{ warn: !store.llm.key_set }">
-        {{ store.llm.key_set ? '密钥已配置' : '未配置密钥，去「模型配置」填写' }}
-      </div>
-    </div>
-
+    <nav class="primary-nav" aria-label="工作台导航">
+      <RouterLink to="/chat" @click="store.currentThreadId = null"><span>⊕</span> 新对话</RouterLink>
+      <RouterLink to="/documents"><span>▧</span> 项目资料</RouterLink>
+      <RouterLink to="/library"><span>▦</span> 知识库图书馆</RouterLink>
+    </nav>
     <div class="section-head">
       <span>项目</span>
       <button class="mini" title="新建项目" @click="showNewProject = true">+</button>
@@ -117,9 +103,8 @@ async function removeThread(projectId, id, title) {
     </ul>
 
     <div class="footer">
-      <RouterLink to="/documents">当前项目资料</RouterLink>
-      <RouterLink to="/library">知识库图书馆</RouterLink>
-      <RouterLink to="/config">模型配置</RouterLink>
+      <RouterLink to="/config" class="settings-link"><span>⚙ 模型配置</span><small>{{ store.llm.model || '未配置' }}</small></RouterLink>
+      <div class="workspace-label">个人工作空间 · 单知识库助手</div>
     </div>
 
     <NewProjectModal v-if="showNewProject" @created="onProjectCreated" @close="showNewProject = false" />
@@ -128,51 +113,10 @@ async function removeThread(projectId, id, title) {
 </template>
 
 <style scoped>
-.sidebar {
-  width: 264px;
-  flex-shrink: 0;
-  background: var(--panel);
-  border-right: 1px solid var(--border);
-  color: var(--text);
-  display: flex;
-  flex-direction: column;
-  padding: 16px 12px;
-  overflow-y: auto;
-}
-.brand { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 750; font-size: 17px; color: var(--ink); padding: 6px 8px 18px; letter-spacing: 0.01em; }
-.model-box { padding: 10px 10px 14px; margin: 0 2px 6px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel2); }
-.model-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 6px; }
-.model-select { padding: 7px 9px; font-size: 13px; border-radius: 8px; }
-.model-hint { font-size: 11px; color: var(--muted); margin-top: 6px; }
-.model-hint.warn { color: #b7791f; }
-.section-head {
-  display: flex; align-items: center; justify-content: space-between;
-  font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em;
-  color: var(--muted); padding: 14px 8px 6px;
-}
-.mini {
-  background: transparent; color: var(--muted); border: 1px solid var(--border);
-  width: 22px; height: 22px; border-radius: 7px; line-height: 1; padding: 0; font-size: 15px;
-}
-.mini:hover { color: var(--ink); border-color: var(--muted); background: transparent; }
-.footer { margin-top: auto; padding-top: 16px; display: flex; flex-direction: column; gap: 4px; border-top: 1px solid var(--line); }
-.footer a {
-  color: var(--text); text-decoration: none; font-size: 14px; padding: 9px 10px; border-radius: 9px;
-}
-.footer a:hover { background: rgba(0,0,0,0.045); }
-.footer a.router-link-active { color: var(--ink); background: var(--panel2); font-weight: 600; }
-
-.project-tree, .thread-tree { list-style: none; margin: 0; padding: 0; }
-.project-tree { padding-bottom: 20px; }
-.project-node { margin-bottom: 8px; }
-.project-row, .thread-row { display: flex; align-items: center; gap: 3px; border-radius: 8px; }
-.project-row.active { background: var(--panel2); }
-.thread-row.active { background: var(--accent-soft); }
-.thread-row.active .name { color: var(--accent-d); font-weight: 600; }
-.thread-tree { margin: 5px 0 10px 16px; padding-left: 10px; border-left: 1px solid var(--border); }
-.name { flex: 1; min-width: 0; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 9px 5px; font-size: 13px; }
-.expander, .collapse { padding: 5px 8px; }
-.project-tree .del { opacity: 1; padding: 5px; color: var(--muted); }
-.empty { padding: 8px 6px; font-size: 12px; }
-.nav-error { color: #a83232; font-size: 12px; }
+.sidebar { width: 264px; flex-shrink: 0; background: #f7f9f8; border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 24px 14px 14px; min-height: 0; overflow: auto; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 0 8px 27px; font-size: 21px; font-weight: 650; color: var(--ink); }.brand small { display: block; font-weight: 400; font-size: 10px; color: var(--muted); letter-spacing: 1px; margin-top: 3px; }.brand-mark { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; background: var(--accent); color: #fff; }.collapse { margin-left: auto; font-size: 21px; padding: 3px 8px; }
+.primary-nav { display: grid; gap: 5px; margin-bottom: 22px; }.primary-nav a { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); padding: 11px 13px; border-radius: 8px; font-size: 13px; }.primary-nav a span { font-size: 18px; width: 20px; }.primary-nav a:hover { background: #edf1ee; }.primary-nav .router-link-active { background: var(--accent-soft); color: var(--accent-d); font-weight: 550; }
+.section-head { display: flex; align-items: center; justify-content: space-between; color: var(--faint); font-size: 11px; padding: 0 10px 10px; }.mini { background: transparent; color: var(--muted); width: 23px; height: 23px; border-radius: 6px; padding: 0; font-size: 17px; }.mini:hover { color: var(--accent); background: var(--accent-soft); }
+.project-tree, .thread-tree { list-style: none; margin: 0; padding: 0; }.project-tree { padding-bottom: 20px; }.project-node { margin-bottom: 8px; }.project-row, .thread-row { display: flex; align-items: center; gap: 2px; border-radius: 7px; }.project-row.active { background: #edf1ee; }.thread-row.active { background: var(--accent-soft); }.thread-row.active .name { color: var(--accent-d); }.thread-tree { margin: 5px 0 10px 17px; padding-left: 9px; border-left: 1px solid var(--border); }.name { flex: 1; min-width: 0; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 9px 5px; font-size: 12px; }.expander { padding: 5px 7px; }.del { padding: 5px; color: var(--muted); }.del:hover { color: #ad3737; }.empty { padding: 8px 6px; font-size: 11px; color: var(--faint); }.nav-error { color: #a83232; font-size: 12px; }
+.footer { margin-top: auto; padding: 15px 5px 2px; border-top: 1px solid var(--line); }.settings-link { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--text); text-decoration: none; font-size: 12px; padding: 8px 3px; }.settings-link small { color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 110px; font-size: 10px; }.workspace-label { font-size: 10px; color: var(--faint); padding: 12px 3px 2px; }
 </style>

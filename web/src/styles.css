@@ -1,28 +1,28 @@
 /* 全局基础样式：一处定义配色与排版，页面组件只写自己的局部样式。
-   风格：ChatGPT 风——白色基调 + 近黑文字 + 灰阶层次 + 绿色点缀。 */
+   风格：知识工作台——白色基调 + 近黑文字 + 灰阶层次 + 绿色点缀。 */
 :root {
-  --ink: #0d0d0d;          /* 标题近黑 */
+  --ink: #202723;          /* 标题近黑 */
   --text: #2d2d31;         /* 正文 */
-  --muted: #6e6e80;        /* 次要文字 */
-  --faint: #8e8ea0;        /* 更弱的说明文字 */
-  --accent: #10a37f;       /* 品牌绿点缀 */
-  --accent-d: #0e8c6d;
-  --accent-soft: rgba(16, 163, 127, 0.1);
+  --muted: #78817b;        /* 次要文字 */
+  --faint: #99a29c;        /* 更弱的说明文字 */
+  --accent: #219653;       /* 品牌绿点缀 */
+  --accent-d: #197a43;
+  --accent-soft: rgba(33, 150, 83, 0.1);
   /* 兼容旧变量名：组件里仍在用 --primary/--bg/--panel/--card/--border */
-  --primary: #10a37f;
-  --primary-2: #0e8c6d;
-  --primary-hover: #0e8c6d;
-  --primary-ink: #0e8c6d;
-  --primary-soft: rgba(16, 163, 127, 0.1);
+  --primary: #219653;
+  --primary-2: #197a43;
+  --primary-hover: #197a43;
+  --primary-ink: #197a43;
+  --primary-soft: rgba(33, 150, 83, 0.1);
   --bg: #ffffff;
-  --bg-soft: #f7f7f8;
+  --bg-soft: #f5f7f6;
   --panel: #ffffff;
-  --panel2: #f7f7f8;
+  --panel2: #f5f7f6;
   --card: #ffffff;
-  --border: #e5e5e6;
-  --line: #ececf1;
-  --btn: #087f63;
-  --btn-h: #06664f;
+  --border: #e4e9e6;
+  --line: #edf0ee;
+  --btn: #21894d;
+  --btn-h: #19703e;
   --shadow: 0 12px 40px rgba(15, 15, 25, 0.08);
   --shadow-sm: 0 2px 8px rgba(15, 15, 25, 0.06);
 }

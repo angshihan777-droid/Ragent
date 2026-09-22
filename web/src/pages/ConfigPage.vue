@@ -1,6 +1,7 @@
 <script setup>
 // 模型配置页：回显当前配置 -> 填地址/密钥拉模型下拉 -> 选模型 -> 保存。
 import { ref, onMounted } from "vue";
+import { store } from "../store.js";
 import { api } from "../api.js";
 
 const baseUrl = ref("");
@@ -65,6 +66,8 @@ async function save() {
   try {
     const view = await api.saveLLMConfig(baseUrl.value.trim(), model.value, apiKey.value);
     keySet.value = view.key_set;
+    store.llm = view;
+    store.models = [...new Set([view.model, ...store.models])];
     apiKey.value = ""; // 保存后清空输入框，密钥不回显
     flash("ok", "已保存。");
   } catch (e) {

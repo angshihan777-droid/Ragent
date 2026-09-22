@@ -1,64 +1,20 @@
 <script setup>
-// 单条消息气泡：按角色区分左右与配色。抽成小组件让聊天列表只管排列、不管样式。
-import { computed } from "vue";
-import { renderInline } from "../md.js";
-
-defineEmits(["trace"]);
-const props = defineProps({
-  role: { type: String, required: true }, // "user" | "assistant"
-  content: { type: String, default: "" },
-  pending: { type: Boolean, default: false }, // 助手回复等待中时显示「思考中」
-  error: { type: Boolean, default: false },
-  sources: { type: Array, default: () => [] }, // 本次 RAG 检索命中的资料原文，展示「检索到了什么」
-});
-
-// 把模型输出的 Markdown 渲染成 HTML（已在 md.js 里先转义再套标签，安全可控）
+import { computed } from 'vue';
+import { renderInline } from '../md.js';
+defineEmits(['trace', 'retry']);
+const props = defineProps({ role: String, content: { type: String, default: '' }, pending: Boolean, error: Boolean, retryable: Boolean, sources: { type: Array, default: () => [] } });
 const html = computed(() => renderInline(props.content));
 </script>
-
 <template>
-  <div class="row" :class="role">
-    <div class="col">
-      <!-- 检索命中提示：让 RAG 不是黑盒，点开能看到这次到底检索到哪些资料原文 -->
-      <details v-if="sources.length" class="sources">
-        <summary>本次检索到 {{ sources.length }} 条资料</summary>
-        <button v-for="(s, i) in sources" :key="i" class="src-item" @click="$emit('trace', s)">{{ s.title || "未知来源" }} · 查看原文</button>
-      </details>
-      <div class="bubble" :class="{ error }">
-        <span v-if="pending" class="dots">思考中<i>.</i><i>.</i><i>.</i></span>
-        <span v-else class="text" v-html="html"></span>
-      </div>
-    </div>
-  </div>
+  <div class="row" :class="role"><div class="col">
+    <div v-if="role === 'assistant'" class="author"><span>✦</span> 知识库助手</div>
+    <div class="bubble" :class="{ error }"><span v-if="pending" class="dots">正在处理…</span><span v-else class="text" v-html="html"></span></div>
+    <button v-if="error && retryable" class="retry quiet" @click="$emit('retry')">↻ 重新提问</button>
+    <details v-if="sources.length" class="sources"><summary>{{ sources.length }} 条参考资料</summary><button v-for="(s, i) in sources" :key="i" class="src-item" @click="$emit('trace', s)">{{ s.title || '未知来源' }} · 查看原文</button></details>
+  </div></div>
 </template>
-
 <style scoped>
-.row { display: flex; margin: 10px 0; }
-.row.user { justify-content: flex-end; }
-.row.assistant { justify-content: flex-start; }
-.bubble {
-  padding: 10px 14px;
-  border-radius: 12px;
-  line-height: 1.6;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-.col { display: flex; flex-direction: column; max-width: 78%; }
-.row.user .col { align-items: flex-end; }
-.sources { margin-bottom: 6px; font-size: 12px; background: var(--panel2); border: 1px solid var(--border); border-radius: 10px; padding: 7px 11px; }
-.sources summary { cursor: pointer; color: var(--primary); font-weight: 600; }
-.src-item { margin-top: 6px; padding: 7px 9px; background: #fff; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); line-height: 1.55; cursor: pointer; transition: 0.12s; }
-.src-item:hover { border-color: var(--accent); }
-.src-item-t { font-weight: 600; color: var(--ink); font-size: 12px; margin-bottom: 3px; }
-.src-item-c { white-space: pre-wrap; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.user .bubble { background: var(--panel2); color: var(--ink); border: 1px solid var(--border); border-bottom-right-radius: 4px; }
-.assistant .bubble { background: var(--card); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
-.row { align-items: flex-start; }
-.bubble.error { background: rgba(224,92,92,0.12); border-color: rgba(224,92,92,0.4); color: #c0392b; }
-.text :deep(code) { background: rgba(148,163,184,0.18); padding: 1px 5px; border-radius: 4px; font-size: 0.92em; }
-.text :deep(strong) { font-weight: 700; }
-.dots i { animation: blink 1.4s infinite both; }
-.dots i:nth-child(2) { animation-delay: 0.2s; }
-.dots i:nth-child(3) { animation-delay: 0.4s; }
-@keyframes blink { 0%, 80%, 100% { opacity: 0; } 40% { opacity: 1; } }
+.row { display: flex; margin: 0 0 28px; align-items: flex-start; }.row.user { justify-content: flex-end; }.col { display: flex; flex-direction: column; min-width: 0; max-width: 100%; }.user .col { max-width: 85%; }.author { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }.author span { display: grid; place-items: center; width: 25px; height: 25px; border-radius: 8px; background: var(--accent-soft); color: var(--accent); font-size: 18px; }
+.bubble { line-height: 1.9; font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }.user .bubble { background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 16px; }.assistant .bubble { padding-left: 2px; }.bubble.error { background: #fff8f5; border: 1px solid #f3ded4; border-radius: 10px; padding: 12px 16px; color: #9c4e38; }.retry { align-self: flex-start; margin-top: 8px; font-size: 12px; }
+.sources { margin-top: 14px; font-size: 12px; color: var(--muted); }.sources summary { cursor: pointer; }.src-item { display: block; margin-top: 6px; padding: 6px 10px; background: var(--accent-soft); color: var(--accent-d); font-size: 12px; text-align: left; }.src-item:hover { background: #d5efe0; }.text :deep(code) { background: var(--panel2); padding: 2px 5px; border-radius: 4px; }.text :deep(strong) { font-weight: 600; }.dots { color: var(--muted); }
 </style>

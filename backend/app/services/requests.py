@@ -1,4 +1,5 @@
 """请求入队：固定知识库执行身份，同会话 FIFO。"""
+import logging
 import asyncpg
 import redis.asyncio as aioredis
 
@@ -37,7 +38,11 @@ async def create_request(
             )
     # 事务已提交，run 一定已在库里，此时投递才安全
     if run_id is not None:
-        await enqueue_run(redis, run_id)
+        try:
+            await enqueue_run(redis, run_id)
+        except aioredis.RedisError:
+            # The request is committed. Returning an error would invite duplicate user retries.
+            logging.getLogger(__name__).warning("Initial delivery unavailable; lease recovery will enqueue request=%s", req["id"])
     return {
         "request_id": req["id"],
         "message_id": msg["id"],

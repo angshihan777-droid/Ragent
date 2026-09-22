@@ -50,23 +50,21 @@ async def heartbeat(conn: asyncpg.Connection, run_id, lease_owner: str) -> None:
         """
         UPDATE agent_runs
         SET heartbeat_at = now()
-        WHERE id = $1 AND lease_owner = $2
+        WHERE id = $1 AND lease_owner = $2 AND status = 'running'
         """,
         run_id,
         lease_owner,
     )
 
 
-async def finish_run(
-    conn: asyncpg.Connection, run_id, status: str, error: str | None
-) -> None:
-    """收尾：把 run 置为终态 done/failed，失败时带上错误原因。"""
-    await conn.execute(
-        "UPDATE agent_runs SET status = $2, error = $3 WHERE id = $1",
-        run_id,
-        status,
-        error,
-    )
+async def finish_run(conn, run_id, status, error, lease_owner) -> bool:
+    """Fence the commit with the unique attempt owner; callers must use a transaction."""
+    row = await conn.fetchrow("""
+        UPDATE agent_runs SET status=$2, error=$3
+        WHERE id=$1 AND status='running' AND lease_owner=$4
+        RETURNING id
+    """, run_id, status, error, lease_owner)
+    return row is not None
 
 
 async def get_run_with_group(

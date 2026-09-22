@@ -34,9 +34,11 @@ async def get_request(conn: asyncpg.Connection, request_id) -> asyncpg.Record | 
     """按 id 取单条请求，供前端轮询/回显当前状态。"""
     return await conn.fetchrow(
         """
-        SELECT id, user_id, agent_id, thread_id, status, created_at
-        FROM agent_run_requests
-        WHERE id = $1
+        SELECT q.id, q.user_id, q.agent_id, q.thread_id, q.status, q.created_at,
+               (SELECT r.error FROM agent_runs r WHERE r.request_id=q.id
+                ORDER BY r.created_at DESC LIMIT 1) AS error
+        FROM agent_run_requests q
+        WHERE q.id = $1
         """,
         request_id,
     )

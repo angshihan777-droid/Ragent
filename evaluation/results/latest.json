@@ -1,0 +1,500 @@
+{
+  "started_at": "2026-09-22T04:42:55.714562+00:00",
+  "harness_sha256": "b476a1fd6822893fca4d7d797997c0d21e6b649e8245616f6f81b3eb955df4f7",
+  "checks": [
+    {
+      "name": "eight_duplicate_deliveries_one_reply",
+      "passed": true,
+      "replies": 1
+    },
+    {
+      "name": "expired_lease_fences_old_owner",
+      "passed": true,
+      "injection": "backdated heartbeat (not OS process kill)",
+      "stale_committed": false,
+      "replacement_committed": true
+    },
+    {
+      "name": "committed_request_survives_initial_enqueue_loss",
+      "passed": true
+    },
+    {
+      "name": "lost_done_notification_reconciles",
+      "passed": true,
+      "seconds": 1.804
+    },
+    {
+      "name": "sse_subscription_failure_reads_database",
+      "passed": true
+    },
+    {
+      "name": "failure_persisted_safely_and_fifo_advances",
+      "passed": true
+    },
+    {
+      "name": "result_transaction_rolls_back_and_retries",
+      "passed": true
+    },
+    {
+      "name": "project_retrieval_isolation",
+      "passed": true
+    },
+    {
+      "name": "document_edit_replaces_index_and_rejects_stale_revision",
+      "passed": true
+    },
+    {
+      "name": "document_delete_cascades_index",
+      "passed": true
+    },
+    {
+      "name": "live_provider_json_decision_and_evidence",
+      "passed": true,
+      "decision": {
+        "action": "direct",
+        "query": "",
+        "clarification": ""
+      },
+      "evidence": {
+        "sufficient": true,
+        "missing": "",
+        "next_query": ""
+      },
+      "evidence_prompt": "问题：星河公司正式员工每年享有几天带薪年假？证据：星河公司正式员工每年享有十五天带薪年假。只判断上述问题是否被这条证据覆盖。"
+    },
+    {
+      "name": "live_graph_greeting",
+      "passed": true,
+      "nodes": [
+        "context",
+        "decide",
+        "answer",
+        "validate"
+      ],
+      "answer": "你好！我是项目知识库助手。有什么可以帮你的？如果你有关于项目资料的问题，直接问我即可；如果本轮没有检索到相关片段，我会如实说明缺口。",
+      "seconds": 1.82
+    },
+    {
+      "name": "live_graph_grounded",
+      "passed": true,
+      "nodes": [
+        "context",
+        "decide",
+        "retrieve",
+        "evidence",
+        "answer",
+        "validate"
+      ],
+      "answer": "星河公司正式员工每年享有 **十五天** 带薪带薪年假。[S1]\n\n（补充：试用期员工暂不能使用年假。[S1]）",
+      "seconds": 3.06
+    },
+    {
+      "name": "real_database_unchanged",
+      "passed": true
+    },
+    {
+      "name": "temporary_database_removed",
+      "passed": true
+    }
+  ],
+  "failures": [],
+  "before": {
+    "counts": {
+      "projects": 1,
+      "threads": 1,
+      "documents": 1,
+      "chunks": 6,
+      "messages": 3,
+      "agent_run_requests": 3
+    },
+    "document_fingerprints": [
+      {
+        "id": "e265900e-8fb0-46b1-9dcc-5a612ff8c8c5",
+        "md5": "b0a2767fe9735e658d17441af0e1f022"
+      }
+    ]
+  },
+  "environment": {
+    "database": "ragent_eval_533ec0e8a84c4493b664099cdcbb2a61",
+    "embedding": "BAAI/bge-small-zh-v1.5",
+    "reranker": "BAAI/bge-reranker-base",
+    "versions": {
+      "langgraph": "0.2.62",
+      "langchain-openai": "0.2.14",
+      "fastembed": "0.4.2",
+      "asyncpg": "0.30.0"
+    }
+  },
+  "retrieval": {
+    "corpus_sha256": "7bf7d0d36c8768455b8cb882ca1ddf5e0ea60b8077c895859eafd36a23de06d7",
+    "documents": 12,
+    "queries": 16,
+    "unit": "document IDs deduplicated within top-3 chunks",
+    "ingest_seconds": 0.48,
+    "first_rerank_ms_includes_model_load": 3549.1,
+    "vector": {
+      "recall_at_3": 1.0,
+      "mrr_at_3": 1.0,
+      "hit_at_1": 1,
+      "median_ms": 4.74
+    },
+    "rerank": {
+      "recall_at_3": 1.0,
+      "mrr_at_3": 1.0,
+      "hit_at_1": 1,
+      "median_ms": 662.04
+    },
+    "records": [
+      {
+        "id": "q01",
+        "question": "正式员工一年能休几天带薪假？",
+        "relevant": [
+          "leave"
+        ],
+        "vector": [
+          "leave",
+          "benefit",
+          "onboard"
+        ],
+        "rerank": [
+          "leave",
+          "benefit",
+          "onboard"
+        ],
+        "vector_ms": 4.51,
+        "rerank_ms": 3549.1
+      },
+      {
+        "id": "q02",
+        "question": "国内出差现在住酒店一晚最多报多少？",
+        "relevant": [
+          "travel"
+        ],
+        "vector": [
+          "travel",
+          "travel_old",
+          "meeting"
+        ],
+        "rerank": [
+          "travel",
+          "travel_old",
+          "meeting"
+        ],
+        "vector_ms": 4.49,
+        "rerank_ms": 831.83
+      },
+      {
+        "id": "q03",
+        "question": "出差回来多久要交车票？",
+        "relevant": [
+          "travel"
+        ],
+        "vector": [
+          "travel",
+          "travel_old",
+          "vpn"
+        ],
+        "rerank": [
+          "travel",
+          "travel_old",
+          "meeting"
+        ],
+        "vector_ms": 5.96,
+        "rerank_ms": 678.06
+      },
+      {
+        "id": "q04",
+        "question": "远程连接提示E42怎么处理？",
+        "relevant": [
+          "vpn"
+        ],
+        "vector": [
+          "vpn",
+          "security",
+          "alerts"
+        ],
+        "rerank": [
+          "vpn",
+          "password",
+          "security"
+        ],
+        "vector_ms": 4.48,
+        "rerank_ms": 714.19
+      },
+      {
+        "id": "q05",
+        "question": "登录密码连续输错被锁多久？",
+        "relevant": [
+          "password"
+        ],
+        "vector": [
+          "password",
+          "vpn",
+          "security"
+        ],
+        "rerank": [
+          "password",
+          "alerts",
+          "backup"
+        ],
+        "vector_ms": 3.74,
+        "rerank_ms": 669.47
+      },
+      {
+        "id": "q06",
+        "question": "苍穹上线灰度各阶段比例和观察时间？",
+        "relevant": [
+          "release"
+        ],
+        "vector": [
+          "release",
+          "alerts",
+          "backup"
+        ],
+        "rerank": [
+          "release",
+          "alerts",
+          "backup"
+        ],
+        "vector_ms": 9.79,
+        "rerank_ms": 763.58
+      },
+      {
+        "id": "q07",
+        "question": "苍穹发布什么情况需要回退版本？",
+        "relevant": [
+          "release"
+        ],
+        "vector": [
+          "release",
+          "alerts",
+          "backup"
+        ],
+        "rerank": [
+          "release",
+          "alerts",
+          "backup"
+        ],
+        "vector_ms": 5.06,
+        "rerank_ms": 668.61
+      },
+      {
+        "id": "q08",
+        "question": "数据库全备何时做、保留多久？",
+        "relevant": [
+          "backup"
+        ],
+        "vector": [
+          "backup",
+          "password",
+          "security"
+        ],
+        "rerank": [
+          "backup",
+          "security",
+          "onboard"
+        ],
+        "vector_ms": 7.65,
+        "rerank_ms": 633.95
+      },
+      {
+        "id": "q09",
+        "question": "苍穹P1需要多久响应和升级？",
+        "relevant": [
+          "alerts"
+        ],
+        "vector": [
+          "alerts",
+          "release",
+          "backup"
+        ],
+        "rerank": [
+          "alerts",
+          "release",
+          "backup"
+        ],
+        "vector_ms": 4.13,
+        "rerank_ms": 676.69
+      },
+      {
+        "id": "q10",
+        "question": "入职首周要完成什么培训？",
+        "relevant": [
+          "onboard"
+        ],
+        "vector": [
+          "onboard",
+          "meeting",
+          "vpn"
+        ],
+        "rerank": [
+          "onboard",
+          "meeting",
+          "alerts"
+        ],
+        "vector_ms": 4.06,
+        "rerank_ms": 627.65
+      },
+      {
+        "id": "q11",
+        "question": "可以用自己的邮箱转发客户个人资料吗？",
+        "relevant": [
+          "security"
+        ],
+        "vector": [
+          "security",
+          "password",
+          "onboard"
+        ],
+        "rerank": [
+          "security",
+          "password",
+          "vpn"
+        ],
+        "vector_ms": 4.97,
+        "rerank_ms": 634.73
+      },
+      {
+        "id": "q12",
+        "question": "会议室订好了没签到会怎样？",
+        "relevant": [
+          "meeting"
+        ],
+        "vector": [
+          "meeting",
+          "travel_old",
+          "vpn"
+        ],
+        "rerank": [
+          "meeting",
+          "travel_old",
+          "vpn"
+        ],
+        "vector_ms": 7.09,
+        "rerank_ms": 616.53
+      },
+      {
+        "id": "q13",
+        "question": "家属的体检费用能报销吗？",
+        "relevant": [
+          "benefit"
+        ],
+        "vector": [
+          "benefit",
+          "travel",
+          "travel_old"
+        ],
+        "rerank": [
+          "benefit",
+          "travel_old",
+          "travel"
+        ],
+        "vector_ms": 4.1,
+        "rerank_ms": 628.42
+      },
+      {
+        "id": "q14",
+        "question": "苍穹发布与数据库恢复演练各需要做什么？",
+        "relevant": [
+          "release",
+          "backup"
+        ],
+        "vector": [
+          "backup",
+          "release",
+          "alerts"
+        ],
+        "rerank": [
+          "backup",
+          "release",
+          "alerts"
+        ],
+        "vector_ms": 6.33,
+        "rerank_ms": 627.52
+      },
+      {
+        "id": "q15",
+        "question": "苍穹服务故障时告警响应和版本回滚的要求分别是什么？",
+        "relevant": [
+          "alerts",
+          "release"
+        ],
+        "vector": [
+          "alerts",
+          "release",
+          "backup"
+        ],
+        "rerank": [
+          "alerts",
+          "release",
+          "password"
+        ],
+        "vector_ms": 7.86,
+        "rerank_ms": 655.47
+      },
+      {
+        "id": "q16",
+        "question": "请三天以上年假找谁批？",
+        "relevant": [
+          "leave"
+        ],
+        "vector": [
+          "leave",
+          "travel_old",
+          "security"
+        ],
+        "rerank": [
+          "leave",
+          "onboard",
+          "travel"
+        ],
+        "vector_ms": 3.53,
+        "rerank_ms": 622.11
+      }
+    ],
+    "no_answer_probes": [
+      {
+        "question": "星河公司明年上市的股票发行价格是多少？",
+        "ranked": [
+          "travel",
+          "leave",
+          "travel_old"
+        ],
+        "interpretation": "top-k is not a no-answer classifier"
+      },
+      {
+        "question": "苍穹项目负责人家庭住址是什么？",
+        "ranked": [
+          "alerts",
+          "release",
+          "security"
+        ],
+        "interpretation": "top-k is not a no-answer classifier"
+      }
+    ]
+  },
+  "provider": {
+    "model": "deepseek-flash",
+    "old_forced_tool": {
+      "type": "BadRequestError",
+      "thinking_tool_choice_rejected": true
+    }
+  },
+  "after": {
+    "counts": {
+      "projects": 1,
+      "threads": 1,
+      "documents": 1,
+      "chunks": 6,
+      "messages": 3,
+      "agent_run_requests": 3
+    },
+    "document_fingerprints": [
+      {
+        "id": "e265900e-8fb0-46b1-9dcc-5a612ff8c8c5",
+        "md5": "b0a2767fe9735e658d17441af0e1f022"
+      }
+    ]
+  },
+  "completed_at": "2026-09-22T04:43:22.279582+00:00"
+}

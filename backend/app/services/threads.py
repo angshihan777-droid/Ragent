@@ -2,6 +2,7 @@
 import json
 import asyncpg
 
+from app.services.errors import public_error
 from app.repositories import messages, requests, runs, threads
 
 
@@ -26,7 +27,7 @@ async def list_thread_messages(pool: asyncpg.Pool, thread_id: str) -> list[dict]
     async with pool.acquire() as conn:
         rows = await messages.list_messages_by_thread(conn, thread_id)
     return [
-        {"id": r["id"], "role": r["role"], "content": r["content"], "created_at": r["created_at"], "sources": json.loads(r["sources"]), "steps": json.loads(r["steps"])}
+        {"id": r["id"], "role": r["role"], "content": public_error(r["content"]) if r["error"] else r["content"], "error": r["error"], "created_at": r["created_at"], "sources": json.loads(r["sources"]), "steps": json.loads(r["steps"])}
         for r in rows
     ]
 
