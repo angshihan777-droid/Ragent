@@ -53,6 +53,7 @@ async function onProjectCreated(projectId) {
   showNewProject.value = false;
   await store.loadProjects();
   await store.selectProject(projectId);
+  if (store.threads.length) await store.selectThread(store.threads[0].id);
   router.push("/chat");
 }
 async function onThreadCreated(threadId) {

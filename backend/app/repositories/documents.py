@@ -71,9 +71,9 @@ async def list_documents_by_project(
     )
 
 
-async def delete_document(conn: asyncpg.Connection, document_id) -> None:
+async def delete_document(conn: asyncpg.Connection, document_id) -> bool:
     """删一篇文档；它的 chunks 靠外键 ON DELETE CASCADE 一并清除。"""
-    await conn.execute("DELETE FROM documents WHERE id = $1", document_id)
+    return await conn.fetchval("DELETE FROM documents WHERE id = $1 RETURNING id", document_id) is not None
 
 
 async def search_chunks_with_doc(
@@ -120,3 +120,18 @@ async def search_chunks(
         _to_vector_literal(query_embedding),
         top_k,
     )
+
+
+async def get_document(conn, document_id):
+    return await conn.fetchrow("""
+        SELECT d.*, (SELECT count(*) FROM chunks c WHERE c.document_id=d.id) AS chunk_count
+        FROM documents d WHERE d.id=$1
+    """, document_id)
+
+
+async def update_document(conn, document_id, revision, title, content, blocks, source_hash, index_version):
+    return await conn.fetchval("""
+        UPDATE documents SET title=$3, content=$4, blocks=$5::jsonb,
+            source_hash=$6, index_version=$7, revision=gen_random_uuid()
+        WHERE id=$1 AND revision=$2 RETURNING id
+    """, document_id, revision, title, content, json.dumps(blocks, ensure_ascii=False), source_hash, index_version)

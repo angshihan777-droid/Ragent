@@ -7,7 +7,7 @@ import asyncpg
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 from app.db import get_pool
-from app.schemas import DocumentOut, IngestDocumentIn, IngestDocumentOut
+from app.schemas import DocumentOut, DocumentDetailOut, UpdateDocumentIn, IngestDocumentIn, IngestDocumentOut
 from app.services import attachments, rag, projects
 
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -73,4 +73,24 @@ async def delete_document(
     pool: asyncpg.Pool = Depends(get_pool),
 ):
     """删一篇资料（chunks 级联删除）。"""
-    await rag.delete_document(pool, document_id)
+    if not await rag.delete_document(pool, document_id):
+        raise HTTPException(status_code=404, detail="资料不存在或已被删除")
+
+
+@router.get("/{document_id}", response_model=DocumentDetailOut)
+async def get_document(document_id: UUID, pool: asyncpg.Pool = Depends(get_pool)):
+    document = await rag.get_document(pool, document_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="资料不存在或已被删除")
+    return document
+
+
+@router.put("/{document_id}", response_model=DocumentDetailOut)
+async def update_document(document_id: UUID, body: UpdateDocumentIn, pool: asyncpg.Pool = Depends(get_pool)):
+    try:
+        document = await rag.update_document(pool, document_id, body.title, body.content, body.revision)
+    except rag.DocumentConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    if document is None:
+        raise HTTPException(status_code=404, detail="资料不存在或已被删除")
+    return document

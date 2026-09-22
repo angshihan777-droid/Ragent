@@ -116,3 +116,22 @@ class ListModelsIn(BaseModel):
 class ListModelsOut(BaseModel):
     """拉取到的可选模型 id 列表，供前端下拉选择。"""
     models: list[str]
+
+
+class DocumentDetailOut(DocumentOut):
+    project_id: UUID
+    content: str
+    revision: UUID
+
+
+class UpdateDocumentIn(BaseModel):
+    title: str = Field(min_length=1, max_length=500)
+    content: str = Field(min_length=1)
+    revision: UUID
+
+    @field_validator("title", "content")
+    @classmethod
+    def not_blank(cls, value):
+        if not value.strip():
+            raise ValueError("标题和正文不能为空")
+        return value

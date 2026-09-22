@@ -10,15 +10,11 @@ export const store = reactive({
   threads: [],      // 当前项目下的会话
   currentThreadId: null,
   threadsByProject: {},
-  selectedThreads: {},
   projectLoading: false,
 
   // LLM 配置：左栏展示当前模型并支持切换；models 是可切换的候选列表
   llm: { base_url: "", model: "", key_set: false },
   models: [],
-
-  // 知识库「图书馆」：跨项目看所有资料，也能按项目筛选
-  library: [],        // [{project_id, project_name, id, title, chunk_count, created_at}]
 
   get currentProject() {
     return this.projects.find((p) => p.id === this.currentProjectId) || null;
@@ -53,8 +49,8 @@ export const store = reactive({
       // Ignore late responses from a project that is no longer selected.
       if (this.currentProjectId !== id) return;
       this.threads = threads;
-      const preferred = this.currentThreadId || this.selectedThreads[id];
-      this.currentThreadId = threads.find(t => t.id === preferred)?.id || threads[0]?.id || null;
+      // 仅保留用户明确打开的会话，不默认打开历史记录。
+      this.currentThreadId = threads.find(t => t.id === this.currentThreadId)?.id || null;
     } finally {
       if (this.currentProjectId === id) this.projectLoading = false;
     }
@@ -62,7 +58,6 @@ export const store = reactive({
 
   async selectProject(id) {
     if (this.currentProjectId === id) return;
-    if (this.currentProjectId) this.selectedThreads[this.currentProjectId] = this.currentThreadId;
     this.currentProjectId = id;
     this.currentThreadId = null;
     this.threads = [];
@@ -72,11 +67,10 @@ export const store = reactive({
   async selectThread(id) {
     if (!this.threads.some(t => t.id === id)) return;
     this.currentThreadId = id;
-    this.selectedThreads[this.currentProjectId] = id;
   },
 
   async deleteThread(id) {
-    // 删当前会话后，若删的正是选中项，回退到剩下的第一条（可能为空）
+    // 删当前会话后回到空白页，不自动展示另一段历史。
     await api.deleteThread(id);
     if (this.currentThreadId === id) this.currentThreadId = null;
     await this.loadProjectDetail();
@@ -94,16 +88,6 @@ export const store = reactive({
     // 左栏一键切模型：空密钥表示不改密钥，保留库里原值
     await api.saveLLMConfig(this.llm.base_url, model, "");
     this.llm = await api.getLLMConfig();
-  },
-
-  async loadLibrary() {
-    // 图书馆视图：汇总所有项目的资料，标注归属项目，前端可按项目筛选
-    const all = [];
-    for (const p of this.projects) {
-      const docs = await api.listDocuments(p.id);
-      for (const d of docs) all.push({ ...d, project_id: p.id, project_name: p.name });
-    }
-    this.library = all;
   },
 
 });

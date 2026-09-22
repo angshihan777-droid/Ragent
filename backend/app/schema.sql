@@ -124,3 +124,6 @@ BEGIN
             FOREIGN KEY (request_id) REFERENCES agent_run_requests(id) ON DELETE CASCADE;
     END IF;
 END $$;
+
+-- 编辑采用版本校验，避免多个页面静默覆盖同一份资料。
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS revision UUID NOT NULL DEFAULT gen_random_uuid();

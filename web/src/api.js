@@ -8,7 +8,7 @@ async function toJson(res) {
     let detail = res.status + "";
     try {
       const body = await res.json();
-      if (body && body.detail) detail = body.detail;
+      if (body?.detail) detail = Array.isArray(body.detail) ? body.detail.map(item => item.msg).join("；") : body.detail;
     } catch (_) {}
     throw new Error(detail);
   }
@@ -52,6 +52,8 @@ export const api = {
     if (title) fd.append("title", title);
     return fetch(BASE + "/documents/upload", { method: "POST", body: fd }).then(toJson);
   },
+  getDocument: (id) => get("/documents/" + id),
+  updateDocument: (id, body) => send("PUT", "/documents/" + id, body),
   deleteDocument: (id) => send("DELETE", "/documents/" + id),
 
   // ---- 提问 ----

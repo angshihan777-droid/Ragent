@@ -74,10 +74,10 @@ async def list_documents(pool: asyncpg.Pool, project_id) -> list[dict]:
     ]
 
 
-async def delete_document(pool: asyncpg.Pool, document_id) -> None:
+async def delete_document(pool: asyncpg.Pool, document_id) -> bool:
     """删一篇资料（chunks 级联删除）。"""
     async with pool.acquire() as conn:
-        await documents.delete_document(conn, document_id)
+        return await documents.delete_document(conn, document_id)
 
 
 async def retrieve(
@@ -114,3 +114,41 @@ async def retrieve(
             "similarity": similarity, "metadata": json.loads(row["metadata"]) if isinstance(row["metadata"], str) else row["metadata"],
         })
     return hits
+
+
+class DocumentConflict(ValueError):
+    pass
+
+
+async def get_document(pool, document_id):
+    async with pool.acquire() as conn:
+        row = await documents.get_document(conn, document_id)
+    return dict(row) if row else None
+
+
+async def update_document(pool, document_id, title, content, revision):
+    original = await get_document(pool, document_id)
+    if original is None:
+        return None
+    if original["revision"] != revision:
+        raise DocumentConflict("资料已在其他页面修改，请重新打开后编辑")
+    title = title.strip()
+    if title == original["title"] and content == original["content"]:
+        return original
+    # 仅改标题保留原文件结构；编辑正文后不沿用失真的页码与文件指纹。
+    same_content = content == original["content"]
+    blocks = json.loads(original["blocks"]) if same_content and original["blocks"] else text_blocks(content, markdown=True)
+    chunks = await prepare_chunks(blocks, title)
+    embeddings = await embed_texts([chunk["content"] for chunk in chunks])
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            updated = await documents.update_document(
+                conn, document_id, revision, title, content, blocks,
+                original["source_hash"] if same_content else None, INDEX_VERSION)
+            if updated is None:
+                if await documents.get_document(conn, document_id) is None:
+                    return None
+                raise DocumentConflict("资料已在其他页面修改，请重新打开后编辑")
+            await conn.execute("DELETE FROM chunks WHERE document_id=$1", document_id)
+            await documents.insert_chunks(conn, document_id, chunks, embeddings)
+            return dict(await documents.get_document(conn, document_id))

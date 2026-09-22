@@ -30,6 +30,19 @@ const tracing = ref(null);     // 点击溯源时展开的那条 {title,content}
 const runState = ref("idle");  // idle | running | done | error
 
 const thread = computed(() => store.currentThread);
+const creatingThread = ref(false);
+async function startConversation() {
+  if (!store.currentProjectId || creatingThread.value) return;
+  const projectId = store.currentProjectId;
+  creatingThread.value = true; historyError.value = "";
+  try {
+    const created = await api.createThread(projectId, "新会话");
+    if (store.currentProjectId !== projectId) return;
+    await store.loadProjectDetail();
+    if (store.currentProjectId === projectId) await store.selectThread(created.id);
+  } catch (e) { if (store.currentProjectId === projectId) historyError.value = e.message; }
+  finally { creatingThread.value = false; }
+}
 
 const STEP_ICONS = { context: "💬", decide: "🧭", retrieve: "📚", evidence: "🔎", rewrite: "↻", answer: "✍️", validate: "✓" };
 
@@ -150,7 +163,11 @@ async function sendText(text) {
 <template>
   <div class="chat-wrap">
     <div v-if="!thread" class="placeholder">
-      <p>先在左侧选择或新建一个会话，就能开始对话。</p>
+      <h1>{{ store.currentProject?.name || '项目知识库' }}</h1>
+      <p>开始一段新对话，或从左侧手动打开历史会话。</p>
+      <div class="welcome-actions"><button :disabled="!store.currentProjectId || creatingThread" @click="startConversation">{{ creatingThread ? '创建中…' : '开始新对话' }}</button><RouterLink v-if="store.currentProjectId" to="/documents">管理项目资料</RouterLink></div>
+      <p v-if="!store.currentProjectId">先在左侧创建一个项目。</p>
+      <p v-if="historyError" role="alert">{{ historyError }}</p>
     </div>
     <template v-else>
       <!-- 中栏：对话窗口 -->
@@ -163,7 +180,7 @@ async function sendText(text) {
               <span class="rag on">自主检索</span>
             </div>
           </div>
-          <button class="quiet panel-toggle" :aria-expanded="!panelCollapsed" @click="panelCollapsed = !panelCollapsed">{{ panelCollapsed ? '展开右栏' : '收起右栏' }}</button>
+          <div class="head-actions"><button class="quiet" :disabled="creatingThread || sending" @click="startConversation">新对话</button><button class="quiet panel-toggle" :aria-expanded="!panelCollapsed" @click="panelCollapsed = !panelCollapsed">{{ panelCollapsed ? '展开右栏' : '收起右栏' }}</button></div>
         </header>
 
         <div ref="listEl" class="list">
@@ -211,7 +228,10 @@ async function sendText(text) {
 <style scoped>
 .chat-wrap { min-height: 0; display: flex; height: 100%; width: 100%; }
 .chat { overflow: hidden; display: flex; flex-direction: column; height: 100%; flex: 1; min-width: 0; padding: 20px 28px; box-sizing: border-box; }
-.placeholder { margin: auto; color: var(--muted); }
+.placeholder { margin: auto; padding: 32px; text-align: center; color: var(--muted); font-size: 14px; line-height: 1.8; }
+.placeholder h1 { color: var(--ink); font-size: 25px; font-weight: 600; }
+.welcome-actions, .head-actions { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
+.welcome-actions { margin-top: 24px; }.welcome-actions a { color: var(--accent-d); text-decoration: none; }
 .chat-head { display: flex; align-items: center; justify-content: space-between; padding: 4px 4px 14px; border-bottom: 1px solid var(--line); }
 .titles .t { font-size: 18px; font-weight: 600; }
 .titles .sub { font-size: 13px; color: var(--muted); margin-top: 4px; display: flex; align-items: center; gap: 8px; }

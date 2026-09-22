@@ -20,8 +20,9 @@ function addFiles(picked) {
       err.value = `${file.name}：请使用支持的格式，且单文件不超过 20 MB。`;
       continue;
     }
+    if (!name.value.trim() && !projectId.value) name.value = file.name.replace(/\.[^.]+$/, "").slice(0, 120);
     const key = `${file.name}:${file.size}:${file.lastModified}`;
-    if (!files.value.some(item => item.key === key)) files.value.push({ key, file, status: "待上传", error: "" });
+    if (!files.value.some(item => item.key === key)) files.value.push({ key, file, status: "已选择，创建后自动上传", error: "" });
   }
 }
 function onPick(event) { addFiles(event.target.files); event.target.value = ""; }
@@ -73,18 +74,20 @@ async function submit() {
           <button v-if="item.status !== '已入库'" type="button" class="ghost" :disabled="busy" :aria-label="'移除 ' + item.file.name" @click="files.splice(index, 1)">×</button>
         </li>
       </ul>
+      <p v-if="files.length && !projectId" class="hint">文件已选好，点击“创建并上传”后开始入库。</p>
+      <p v-if="!name.trim()" class="hint">请填写项目名称后继续。</p>
       <p v-if="!files.length" class="hint">也可以先创建空项目，稍后在项目资料中上传。</p>
       <p v-if="err" class="error" role="alert">{{ err }}</p>
       <div class="actions">
         <button type="button" class="ghost" :disabled="busy" @click="close">{{ projectId ? '先进入项目' : '取消' }}</button>
-        <button :disabled="busy || !name.trim()">{{ busy ? '处理中…' : projectId ? '重试未完成文件' : '创建项目' }}</button>
+        <button :disabled="busy || !name.trim()">{{ busy ? '处理中…' : projectId ? '重试未完成文件' : files.length ? '创建并上传' : '创建项目' }}</button>
       </div>
     </form>
   </div>
 </template>
 <style scoped>
 .mask { position: fixed; inset: 0; background: rgba(45,45,42,.42); display: flex; align-items: center; justify-content: center; z-index: 50; }
-.modal { background: var(--card); border-radius: 14px; padding: 24px; width: 520px; max-width: 92vw; max-height: 88dvh; overflow: auto; box-shadow: 0 20px 40px rgba(0,0,0,.2); }
+.modal { background: var(--panel); border-radius: 14px; padding: 24px; width: 520px; max-width: 92vw; max-height: 88dvh; overflow: auto; box-shadow: 0 20px 40px rgba(0,0,0,.2); }
 h3 { margin: 0 0 12px; } h4 { margin-bottom: 6px; }
 label { display: block; margin: 12px 0 6px; font-size: 13px; }
 .hint { color: var(--muted); font-size: 12px; line-height: 1.7; }
