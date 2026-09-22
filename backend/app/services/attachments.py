@@ -1,59 +1,92 @@
-"""附件解析：把上传的 PDF/Word/Markdown/纯文本抽成纯文本，供 RAG 切块入库。
+"""提取带来源的文本块；扫描 PDF 和旧 .doc 显式拒绝，不伪造内容。"""
+import io
+import re
+from pathlib import Path
 
-解析库(pypdf/python-docx)只在真正解析对应类型时惰性 import——
-大多数请求不上传文件，惰性加载避免无谓拖慢进程启动与内存占用。
-"""
-from __future__ import annotations
-
-# 支持的后缀：与前端 accept 保持一致，未知类型直接拒绝而不是猜测。
 SUPPORTED_EXTENSIONS = (".pdf", ".docx", ".md", ".markdown", ".txt")
 
 
-def _ext(filename: str) -> str:
-    """取小写扩展名（含点），无扩展名返回空串。"""
-    name = filename or ""
-    dot = name.rfind(".")
-    return name[dot:].lower() if dot != -1 else ""
+def text_blocks(text, *, markdown=False):
+    blocks, headings, buffer = [], [], []
+    fenced = False
+
+    def flush():
+        content = "\n".join(buffer).strip()
+        if content:
+            blocks.append({"text": content, "heading_path": list(headings), "kind": "code" if fenced else "paragraph"})
+        buffer.clear()
+
+    for line in text.splitlines():
+        if markdown and re.match(r"^\s*(```|~~~)", line):
+            if not fenced:
+                flush()
+                fenced = True
+                buffer.append(line)
+            else:
+                buffer.append(line)
+                flush()
+                fenced = False
+            continue
+        heading = re.match(r"^(#{1,6})\s+(.+)$", line) if markdown and not fenced else None
+        if heading:
+            flush()
+            level = len(heading[1])
+            headings[:] = headings[:level - 1] + [heading[2].strip()]
+            buffer.append(line)
+        elif not line.strip() and not fenced:
+            flush()
+        else:
+            buffer.append(line)
+    flush()
+    return blocks
 
 
-def parse_file(filename: str, data: bytes) -> str:
-    """按扩展名把上传文件解析成纯文本；不支持的类型显式报错。
-
-    预设不成立(空文件/无法解析)时直接抛错，由路由收成 400，
-    不把"没解析出内容"伪装成入库成功。
-    """
-    ext = _ext(filename)
-    if ext == ".pdf":
-        text = _parse_pdf(data)
-    elif ext == ".docx":
-        text = _parse_docx(data)
-    elif ext in (".md", ".markdown", ".txt"):
-        # 文本类直接按 UTF-8 读，非法字节用替换字符兜底而不是整体失败
-        text = data.decode("utf-8", errors="replace")
-    else:
-        raise ValueError(f"不支持的文件类型: {ext or '(无扩展名)'}")
-    text = text.strip()
-    if not text:
+def parse_file(filename, data):
+    ext = Path(filename or "").suffix.lower()
+    if ext not in SUPPORTED_EXTENSIONS:
+        raise ValueError("支持 PDF、Markdown、Word（.docx）和 TXT；旧 .doc 请先转换为 .docx")
+    try:
+        if ext == ".pdf":
+            from pypdf import PdfReader
+            reader = PdfReader(io.BytesIO(data))
+            blocks = []
+            for page, obj in enumerate(reader.pages, 1):
+                text = obj.extract_text() or ""
+                if not text.strip():
+                    raise ValueError(f"PDF 第 {page} 页没有可提取文本，可能是扫描页；请先 OCR 后上传")
+                for block in text_blocks(text):
+                    blocks.append({**block, "page_start": page, "page_end": page})
+        elif ext == ".docx":
+            from docx import Document
+            from docx.table import Table
+            from docx.text.paragraph import Paragraph
+            doc, blocks, headings = Document(io.BytesIO(data)), [], []
+            for child in doc.element.body.iterchildren():
+                tag = child.tag.rsplit("}", 1)[-1]
+                if tag == "p":
+                    para = Paragraph(child, doc)
+                    text = para.text.strip()
+                    style = para.style.name if para.style else ""
+                    match = re.search(r"(?:Heading|标题)\s*(\d+)", style, re.I)
+                    if match and text:
+                        headings = headings[:int(match[1]) - 1] + [text]
+                    if text:
+                        blocks.append({"text": text, "heading_path": list(headings), "kind": "paragraph"})
+                elif tag == "tbl":
+                    table = Table(child, doc)
+                    rows = [[cell.text.strip().replace("\n", " / ") for cell in row.cells] for row in table.rows]
+                    if rows:
+                        header = " | ".join(rows[0])
+                        for row in rows[1:] or rows[:1]:
+                            text = header if len(rows) == 1 else header + "\n" + " | ".join(row)
+                            if text.strip(" |\n"):
+                                blocks.append({"text": text, "heading_path": list(headings), "kind": "table"})
+        else:
+            blocks = text_blocks(data.decode("utf-8-sig"), markdown=ext in (".md", ".markdown"))
+    except ValueError:
+        raise
+    except Exception as exc:
+        raise ValueError("文件解析失败，请检查文件是否损坏、加密或编码不是 UTF-8") from exc
+    if not blocks:
         raise ValueError("文件解析后没有可用文本")
-    return text
-
-
-def _parse_pdf(data: bytes) -> str:
-    """逐页抽取 PDF 文本；扫描件(无文本层)会得到空串，由上层报错。"""
-    import io
-
-    from pypdf import PdfReader
-
-    reader = PdfReader(io.BytesIO(data))
-    pages = [(page.extract_text() or "") for page in reader.pages]
-    return "\n\n".join(pages)
-
-
-def _parse_docx(data: bytes) -> str:
-    """抽取 .docx 的段落文本；不处理表格/图片等复杂结构，取正文够检索用。"""
-    import io
-
-    from docx import Document
-
-    doc = Document(io.BytesIO(data))
-    return "\n".join(para.text for para in doc.paragraphs)
+    return blocks

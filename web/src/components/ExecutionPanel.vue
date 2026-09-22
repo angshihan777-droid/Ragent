@@ -7,15 +7,10 @@ const props = defineProps({
   runState: { type: String, default: "idle" },
   thread: Object,
   projectName: String,
-  agentName: String,
-  useRag: Boolean,
 });
 defineEmits(["trace"]);
-const progress = computed(() => {
-  const total = props.steps.length;
-  const done = props.steps.filter(s => s.status === "done").length;
-  return { total, done, pct: total ? Math.round(done / total * 100) : 0 };
-});
+const retrieved = computed(() => props.steps.some(s => s.node === "retrieve"));
+const completed = computed(() => props.steps.filter(s => s.status === "done").length);
 </script>
 <template>
   <div class="process">
@@ -32,8 +27,8 @@ const progress = computed(() => {
       <div v-if="steps.length" class="plan-title">
         <span class="pt-ico">🗂️</span>
         <div class="pt-txt">
-          <div class="pt-name">{{ thread.title }}</div>
-          <div class="pt-sub">{{ projectName }} · {{ agentName }}</div>
+          <div class="pt-name">{{ thread?.title }}</div>
+          <div class="pt-sub">{{ projectName }} · 知识库助手</div>
         </div>
       </div>
 
@@ -49,13 +44,9 @@ const progress = computed(() => {
           <span class="lbl">{{ s.label }}</span>
         </li>
       </ul>
-      <p v-else class="p-empty">发送问题后，这里会铺开本轮的执行计划，并实时点亮每一步进度。</p>
+      <p v-else class="p-empty">发送问题后，这里会记录本轮实际执行的步骤。</p>
 
-      <div v-if="steps.length" class="prog-foot">
-        <span>{{ progress.done }} / {{ progress.total }} 步</span>
-        <div class="bar" role="progressbar" aria-label="执行进度" :aria-valuenow="progress.pct" :aria-valuemin="0" :aria-valuemax="100"><div class="bar-in" :style="{ width: progress.pct + '%' }"></div></div>
-        <span>{{ progress.pct }}%</span>
-      </div>
+      <div v-if="steps.length" class="prog-foot">已完成 {{ completed }} 个实际步骤 · {{ runState === 'running' ? '处理中' : '本轮记录' }}</div>
     </section>
 
     <!-- 命中资料：检索到的资料卡片，点击溯源看原文 -->
@@ -65,7 +56,9 @@ const progress = computed(() => {
       <ul v-if="sources.length" class="srcs">
         <li v-for="(s, i) in sources" :key="s.chunk_id || i">
           <button class="source-button" @click="$emit('trace', s)">
-            <span class="src-t">{{ s.title || '未知来源' }}</span>
+            <span class="src-t">{{ s.citation_id ? '[' + s.citation_id + '] ' : '' }}{{ s.title || '未知来源' }}</span>
+            <span v-if="s.metadata?.page_start" class="src-p">第 {{ s.metadata.page_start }} 页</span>
+            <span v-if="s.metadata?.heading_path?.length" class="src-p">{{ s.metadata.heading_path.join(" / ") }}</span>
             <span class="match">匹配度 {{ formatSimilarity(s.similarity) }}</span>
             <meter v-if="validSimilarity(s.similarity)" min="-1" max="1" :value="s.similarity" :aria-label="(s.title || '资料') + ' 匹配度'"></meter>
             <span class="src-p">{{ (s.content || '').slice(0, 100) }}{{ s.content?.length > 100 ? '…' : '' }}</span>
@@ -73,7 +66,7 @@ const progress = computed(() => {
           </button>
         </li>
       </ul>
-      <p v-else class="p-empty">{{ !useRag ? '当前会话未启用知识库检索。' : runState === 'running' ? '正在等待本轮检索结果…' : runState === 'done' ? '本轮未命中资料。' : runState === 'error' ? '本轮执行失败，未收到命中资料。' : '发送问题后，检索命中的资料与匹配度会显示在这里。' }}</p>
+      <p v-else class="p-empty">{{ runState === 'running' ? '助手正在处理；需要资料时会自动检索。' : runState === 'done' ? (retrieved ? '本轮未获得可用资料，请结合回答查看原因。' : '本轮未检索资料。') : runState === 'error' ? '本轮执行失败，未收到命中资料。' : '发送问题后，检索命中的资料与匹配度会显示在这里。' }}</p>
     </section>
   </div>
 </template>
@@ -101,8 +94,6 @@ const progress = computed(() => {
 .steps .s-emoji { font-size: 14px; }
 .steps .lbl { flex: 1; }
 .prog-foot { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
-.prog-foot .bar { flex: 1; height: 6px; background: var(--line); border-radius: 999px; overflow: hidden; }
-.prog-foot .bar-in { height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.35s ease; }
 .p-empty { font-size: 13px; color: var(--muted); line-height: 1.6; margin: 8px 2px; }
 .srcs { list-style: none; margin: 0; padding: 0; }
 .srcs li { padding: 0; border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; background: #fff; transition: 0.12s; }

@@ -40,6 +40,7 @@ services:
     volumes:
       # 挂载源码，配合 --reload 改代码即生效
       - ./backend/app:/app/app
+      - fastembed_cache:/tmp/fastembed_cache
     depends_on:
       # 等依赖 healthcheck 通过再启动，避免启动瞬间连不上
       postgres:
@@ -60,6 +61,7 @@ services:
     volumes:
       # 同样挂源码，改 worker 代码后重启容器即生效
       - ./backend/app:/app/app
+      - fastembed_cache:/tmp/fastembed_cache
     depends_on:
       postgres:
         condition: service_healthy
@@ -68,3 +70,4 @@ services:
 
 volumes:
   pgdata:
+  fastembed_cache:

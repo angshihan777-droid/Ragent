@@ -30,20 +30,8 @@ const tracing = ref(null);     // 点击溯源时展开的那条 {title,content}
 const runState = ref("idle");  // idle | running | done | error
 
 const thread = computed(() => store.currentThread);
-const agent = computed(() => store.agentOf(thread.value));
 
-// 后端 step 的 key → 展示用图标（emoji，零依赖，观感贴近参考稿）
-const STEP_ICONS = { retrieve: "📚", agent: "🧠", tools: "🛠️", answer: "✍️" };
-
-// 进入本轮先按「是否检索」铺开计划：检索(可选)→模型思考→生成回答。
-// 工具调用是否发生取决于模型，所以不预置，收到 tools 事件时再插到「生成回答」前。
-function buildPlan(useRag) {
-  const plan = [];
-  if (useRag) plan.push({ key: "retrieve", label: "检索知识库", icon: STEP_ICONS.retrieve, status: "pending" });
-  plan.push({ key: "agent", label: "模型思考", icon: STEP_ICONS.agent, status: "pending" });
-  plan.push({ key: "answer", label: "生成回答", icon: STEP_ICONS.answer, status: "pending" });
-  return plan;
-}
+const STEP_ICONS = { context: "💬", decide: "🧭", retrieve: "📚", evidence: "🔎", rewrite: "↻", answer: "✍️", validate: "✓" };
 
 async function scrollToBottom() {
   await nextTick();
@@ -67,7 +55,13 @@ watch(
     try {
       const history = await api.listThreadMessages(id);
       if (version !== viewVersion) return;
-      messages.value = history.map(m => ({ role: m.role, content: m.content }));
+      messages.value = history.map(m => ({ role: m.role, content: m.content, sources: m.sources || [] }));
+      const latest = [...history].reverse().find(m => m.role === "assistant");
+      if (latest) {
+        sources.value = latest.sources || [];
+        steps.value = (latest.steps || []).map(step => ({ ...step, icon: STEP_ICONS[step.node] || "·" }));
+        runState.value = "done";
+      }
       await scrollToBottom();
     } catch (e) {
       if (version === viewVersion) historyError.value = "加载对话失败：" + e.message;
@@ -85,24 +79,11 @@ function send() {
   sendText(text);
 }
 
-// 收到后端 step 事件：把对应计划步骤点亮为 running/done。
-// tools 未预置——首次出现时插到「生成回答」前，保持计划清单顺序自然。
+// run_id 标识每次节点执行，补检索不会覆盖第一轮步骤。
 function applyStep(step) {
-  let node = steps.value.find((s) => s.key === step.key);
-  if (!node && step.key === "tools") {
-    node = { key: "tools", label: "调用工具", icon: STEP_ICONS.tools, status: "pending" };
-    const at = steps.value.findIndex((s) => s.key === "answer");
-    steps.value.splice(at < 0 ? steps.value.length : at, 0, node);
-  }
-  if (!node) return;
-  // 某步开始 running 时，把它前面还没结束的步骤补成 done（事件粒度粗时也不留半截）
-  if (step.status === "running") {
-    for (const s of steps.value) {
-      if (s.key === step.key) break;
-      if (s.status !== "done") s.status = "done";
-    }
-  }
-  node.status = step.status;
+  const node = steps.value.find(s => s.key === step.key);
+  if (node) Object.assign(node, step);
+  else steps.value.push({ ...step, icon: STEP_ICONS[step.node] || "·" });
 }
 
 async function sendText(text) {
@@ -112,8 +93,8 @@ async function sendText(text) {
   const threadId = thread.value.id;
   const controller = new AbortController();
   streamController = controller;
-  // 新一轮：按当前 Agent 是否检索铺开计划，从头展示
-  steps.value = buildPlan(!!agent.value?.use_rag);
+  // 新一轮：清空上一轮的步骤与来源
+  steps.value = [];
   sources.value = []; tracing.value = null; runState.value = "running";
   messages.value.push({ role: "user", content: text });
   const reply = reactive({ role: "assistant", content: "", pending: true, error: false, sources: [] });
@@ -128,8 +109,6 @@ async function sendText(text) {
       (token) => {
         if (version !== viewVersion) return;
         if (reply.pending) reply.pending = false;
-        // 首个 token 到达＝开始生成回答：点亮「生成回答」并收尾前面的步骤
-        applyStep({ key: "answer", status: "running" });
         reply.content += token;
         scrollToBottom();
       },
@@ -146,9 +125,7 @@ async function sendText(text) {
     if (version !== viewVersion) return;
     reply.pending = false;
     if (result.status === "done") {
-      if (!reply.content) reply.content = result.content || "(空回复)";
-      // 收尾：所有步骤置 done，进度拉满
-      for (const s of steps.value) s.status = "done";
+      reply.content = result.content || reply.content || "(空回复)";
       runState.value = "done";
     } else {
       reply.error = true;
@@ -182,10 +159,8 @@ async function sendText(text) {
           <div class="titles">
             <div class="t">{{ thread.title }}</div>
             <div class="sub">
-              {{ store.currentProject?.name }} · {{ agent?.name }}
-              <span class="rag" :class="{ on: agent?.use_rag }">
-                {{ agent?.use_rag ? "检索知识库" : "不检索" }}
-              </span>
+              {{ store.currentProject?.name }} · 知识库助手
+              <span class="rag on">自主检索</span>
             </div>
           </div>
           <button class="quiet panel-toggle" :aria-expanded="!panelCollapsed" @click="panelCollapsed = !panelCollapsed">{{ panelCollapsed ? '展开右栏' : '收起右栏' }}</button>
@@ -195,7 +170,7 @@ async function sendText(text) {
           <p v-if="historyLoading" class="empty">加载对话…</p>
           <p v-if="historyError" role="alert">{{ historyError }}</p>
           <p v-if="messages.length === 0" class="empty">
-            问点什么吧。{{ agent?.use_rag ? "助手会先检索本项目资料再回答。" : "该助手不检索资料，自由发挥。" }}
+            问点什么吧。助手会按需检索本项目资料，检查证据后回答。
           </p>
           <MessageBubble
             v-for="(m, i) in messages"
@@ -225,7 +200,7 @@ async function sendText(text) {
       <ResizeHandle v-if="!panelCollapsed" v-model="panelWidth" :min="280" :max="480" reverse label="调整右栏宽度" />
       <aside v-if="!panelCollapsed" class="right-rail" :style="{ width: panelWidth + 'px' }">
         <ExecutionPanel :steps="steps" :sources="sources" :run-state="runState" :thread="thread"
-          :project-name="store.currentProject?.name" :agent-name="agent?.name" :use-rag="!!agent?.use_rag" @trace="tracing = $event" />
+          :project-name="store.currentProject?.name"  @trace="tracing = $event" />
       </aside>
 
       <SourceDialog v-if="tracing" :source="tracing" @close="tracing = null" />
@@ -238,8 +213,6 @@ async function sendText(text) {
 .chat { overflow: hidden; display: flex; flex-direction: column; height: 100%; flex: 1; min-width: 0; padding: 20px 28px; box-sizing: border-box; }
 .placeholder { margin: auto; color: var(--muted); }
 .chat-head { display: flex; align-items: center; justify-content: space-between; padding: 4px 4px 14px; border-bottom: 1px solid var(--line); }
-.demo { white-space: nowrap; background: var(--accent-soft); color: var(--accent); border: 1px solid var(--border); padding: 7px 15px; border-radius: 9px; font-size: 13px; font-weight: 600; }
-.demo:hover:not(:disabled) { background: var(--accent-soft); }
 .titles .t { font-size: 18px; font-weight: 600; }
 .titles .sub { font-size: 13px; color: var(--muted); margin-top: 4px; display: flex; align-items: center; gap: 8px; }
 .rag { font-size: 11px; padding: 2px 9px; border-radius: 999px; background: rgba(0,0,0,0.05); color: var(--muted); }

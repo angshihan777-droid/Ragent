@@ -2,13 +2,13 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 
 class CreateRequestIn(BaseModel):
     """发起一次提问：前端只需给会话标识和问题内容。"""
     thread_id: str
-    content: str
+    content: str = Field(min_length=1, max_length=16000)
 
 
 class CreateRequestOut(BaseModel):
@@ -47,12 +47,19 @@ class DocumentOut(BaseModel):
     created_at: datetime
 
 
-# ---- 项目 / Agent / 会话（M11 项目分区 + 多 Agent）----
+# ---- 项目 / 会话----
 
 class CreateProjectIn(BaseModel):
     """新建项目：名称必填，描述可选。"""
-    name: str
+    name: str = Field(min_length=1, max_length=120)
     description: str = ""
+
+    @field_validator("name")
+    @classmethod
+    def valid_name(cls, value):
+        if not value.strip():
+            raise ValueError("项目名称不能为空")
+        return value.strip()
 
 
 class ProjectOut(BaseModel):
@@ -63,28 +70,8 @@ class ProjectOut(BaseModel):
     created_at: datetime
 
 
-class CreateAgentIn(BaseModel):
-    """在项目内新建 Agent：人设与系统提示可选，use_rag 决定是否检索知识库。"""
-    name: str
-    persona: str = ""
-    system_prompt: str = ""
-    use_rag: bool = True
-
-
-class AgentOut(BaseModel):
-    """Agent 返回体。"""
-    id: UUID
-    project_id: UUID
-    name: str
-    persona: str
-    system_prompt: str
-    use_rag: bool
-    created_at: datetime
-
-
 class CreateThreadIn(BaseModel):
-    """在项目内新建会话：绑定一个 Agent，标题可选。"""
-    agent_id: UUID
+    """在项目内新建知识库会话。"""
     title: str = "新会话"
 
 
@@ -92,7 +79,6 @@ class ThreadOut(BaseModel):
     """会话返回体。"""
     id: UUID
     project_id: UUID
-    agent_id: UUID
     title: str
     created_at: datetime
 
@@ -102,6 +88,8 @@ class MessageOut(BaseModel):
     id: UUID
     role: str
     content: str
+    sources: list[dict] = Field(default_factory=list)
+    steps: list[dict] = Field(default_factory=list)
     created_at: datetime
 
 

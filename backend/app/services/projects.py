@@ -1,13 +1,15 @@
 """项目用例流程：增删查。删项目要级联清理会话名下的消息/请求/run。"""
 import asyncpg
 
-from app.repositories import messages, projects, requests, runs
+from app.repositories import messages, projects, requests, runs, threads
 
 
 async def create_project(pool: asyncpg.Pool, name: str, description: str) -> dict:
     """新建项目。"""
     async with pool.acquire() as conn:
-        row = await projects.insert_project(conn, name, description)
+        async with conn.transaction():
+            row = await projects.insert_project(conn, name.strip(), description)
+            await threads.insert_thread(conn, row["id"], "新会话")
     return dict(row)
 
 
@@ -28,7 +30,7 @@ async def get_project(pool: asyncpg.Pool, project_id) -> dict | None:
 async def delete_project(pool: asyncpg.Pool, project_id) -> bool:
     """硬删项目及其全部关联数据；项目不存在返回 False。
 
-    删除顺序关键：agents/threads/documents/chunks 有外键 CASCADE 会自动清，
+    删除顺序关键：threads/documents/chunks 有外键 CASCADE 会自动清，
     但 messages/agent_run_requests/agent_runs 用 thread_id 文本关联、无外键，
     必须按 run→request→message 的外键依赖顺序显式删，再删项目触发级联。
     整个过程放一个事务，避免删一半留下孤儿数据。

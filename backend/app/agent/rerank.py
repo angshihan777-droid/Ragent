@@ -10,6 +10,7 @@
 import asyncio
 
 from fastembed.rerank.cross_encoder import TextCrossEncoder
+from tokenizers import Tokenizer
 
 from app.config import get_settings
 
@@ -27,7 +28,15 @@ def _get_model() -> TextCrossEncoder:
 
 def _rerank_sync(query: str, docs: list[str]) -> list[float]:
     """同步为每个候选块打分：分数越高越相关。"""
-    return list(_get_model().rerank(query, docs))
+    model = _get_model()
+    # 用重排模型自己的 tokenizer 限制长查询，给正文留下预算；不改共享 tokenizer。
+    tokenizer = Tokenizer.from_str(model.model.tokenizer.to_str())
+    tokenizer.no_truncation()
+    tokenizer.no_padding()
+    encoded = tokenizer.encode(query, add_special_tokens=False)
+    if len(encoded.ids) > 96:
+        query = query[:encoded.offsets[95][1]]
+    return list(model.rerank(query, docs))
 
 
 async def rerank(query: str, docs: list[str], top_k: int) -> list[str]:

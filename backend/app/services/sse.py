@@ -5,7 +5,6 @@ pub/sub 不持久化，若先查库再订阅就会漏掉这段窗口的推送、
 所以顺序固定为「先订阅、再查库」：订阅在前保证不漏；
 若查库已是终态直接补发并结束，否则挂在频道上等 worker 推。
 """
-import asyncio
 import json
 
 import asyncpg
@@ -50,6 +49,15 @@ async def stream_request(
     # 先订阅：确保订阅早于下面的查库，堵住「查完到订阅之间 run 跑完」的漏推窗口
     await pubsub.subscribe(request_channel(request_id))
     try:
+        seen = set()
+        cached = await redis.lrange(request_channel(request_id) + ":trace", 0, -1)
+        for raw in cached:
+            payload = json.loads(raw)
+            seen.add(json.dumps(payload, sort_keys=True))
+            if payload["type"] == "step":
+                yield _format_step(payload["step"])
+            elif payload["type"] == "sources":
+                yield _format_sources(payload["sources"])
         # 再查库：若已终态（含 SSE 连上前就跑完的情况），直接补发结果并结束
         async with pool.acquire() as conn:
             req = await requests.get_request(conn, request_id)
@@ -59,6 +67,13 @@ async def stream_request(
             if req["status"] in ("done", "failed"):
                 reply = await messages.get_assistant_reply(conn, request_id)
                 content = reply["content"] if reply else None
+                if reply:
+                    sources = json.loads(reply["sources"])
+                    if json.dumps({"type": "sources", "sources": sources}, sort_keys=True) not in seen:
+                        yield _format_sources(sources)
+                    for step in json.loads(reply["steps"]):
+                        if json.dumps({"type": "step", "step": step}, sort_keys=True) not in seen:
+                            yield _format_step(step)
                 yield _format_done(req["status"], content, req.get("error"))
                 return
 
@@ -71,6 +86,11 @@ async def stream_request(
                 yield ": keepalive\n\n"  # SSE 注释行，仅保活不触发前端事件
                 continue
             payload = json.loads(msg["data"])
+            if payload["type"] in ("step", "sources"):
+                identity = json.dumps(payload, sort_keys=True)
+                if identity in seen:
+                    continue
+                seen.add(identity)
             # sources 是检索命中，先于正文到达；token 是回复增量：两者都边收边转发、不结束
             if payload["type"] == "step":
                 yield _format_step(payload["step"])

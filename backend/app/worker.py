@@ -47,38 +47,39 @@ async def _execute(
     request_id,
     question: str,
     project_id,
-    use_rag: bool,
-    system_prompt: str,
 ) -> str:
-    """执行：把本 run 绑定的问题交给 LangGraph 主图流式跑，边吐 token 边推送，收尾落库并返回。
+    """执行：运行 LangGraph，实时发布步骤/来源，引用检查后的回答落库并返回。
 
     question 来自 request 绑定的 message，不是「会话最后一条」——
     多条请求排队时，靠猜最后一条会串成同一个答案（已踩坑）。
-    流式关键：边收 token 边 publish_token 让前端实时追加，同时累加成完整回复；
+    发布时序：回答通过图内校验后才收到正文事件；
     stream 正常跑完才落库，中途抛错则不写库、由上层收成 failed，
     避免把空回复或半截结果写进会话。
     回复绑定 request_id，SSE 客户端晚连时能从库里精确补读到本请求结果。
     """
     # pool 透传给图，检索节点用它查知识库(worker 有自己的连接池)
     parts: list[str] = []
+    sources, steps = [], {}
     async for kind, data in stream_agent(
-        question, pool, project_id, use_rag, system_prompt
+        question, pool, project_id, thread_id, request_id
     ):
         # step 是过程链条：某节点开始/完成，先于/伴随正文到达，推给右栏实时展示
         if kind == "step":
+            steps[data["key"]] = data
             await publish_step(redis, request_id, data)
             continue
-        # sources 先于正文到达：把本次检索命中的资料单独推一条，前端在答案上方展示
+        # sources 先于正文到达：把本次检索命中的资料单独推一条，前端在资料卡片展示
         if kind == "sources":
+            sources = data
             await publish_sources(redis, request_id, data)
             continue
-        # token 是回复增量：边收边推给频道，SSE 端转发，前端实时追加显示
+        # token 保留现有 SSE 契约；目前正文在引用检查后一次发布
         parts.append(data)
         await publish_token(redis, request_id, data)
     reply = "".join(parts)
     async with pool.acquire() as conn:
         await messages.insert_message(
-            conn, thread_id, "assistant", reply, request_id=request_id
+            conn, thread_id, "assistant", reply, request_id=request_id, sources=sources, steps=list(steps.values())
         )
     return reply
 
@@ -99,10 +100,8 @@ async def _handle_run(pool: asyncpg.Pool, redis: aioredis.Redis, run_id) -> None
     user_id = info["user_id"]
     agent_id = info["agent_id"]
     question = info["question"]
-    # 本会话 Agent 的配置：决定是否检索、检索哪个项目的资料、注入什么人设
+    # 项目范围由服务端确定，模型不能自行选择
     project_id = info["project_id"]
-    use_rag = info["use_rag"]
-    system_prompt = info["system_prompt"]
 
     # 3) 心跳后台续约 + 执行并行；执行成败决定最终状态
     hb = asyncio.create_task(_heartbeat_loop(pool, run_id, WORKER_ID))
@@ -110,7 +109,7 @@ async def _handle_run(pool: asyncpg.Pool, redis: aioredis.Redis, run_id) -> None
     try:
         reply = await _execute(
             pool, redis, thread_id, request_id, question,
-            project_id, use_rag, system_prompt,
+            project_id,
         )
     except Exception as e:  # 执行失败也要收尾，不能让 run 悬在 running
         status, error = "failed", str(e)

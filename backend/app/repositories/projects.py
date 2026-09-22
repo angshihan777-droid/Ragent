@@ -41,7 +41,7 @@ async def get_project(conn: asyncpg.Connection, project_id) -> asyncpg.Record | 
 
 
 async def delete_project(conn: asyncpg.Connection, project_id) -> None:
-    """硬删项目：agents/threads/documents/chunks 靠外键 ON DELETE CASCADE 一并清除。
+    """硬删项目：threads/documents/chunks 靠外键 ON DELETE CASCADE 一并清除。
 
     messages/agent_run_requests 用 thread_id 文本关联、无外键，
     由 service 层显式清理，避免留下孤儿会话记录。

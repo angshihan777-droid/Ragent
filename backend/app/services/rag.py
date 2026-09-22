@@ -1,42 +1,62 @@
 """RAG 用例流程：文档入库(切块→向量化→落库)与检索(向量化问题→查最近块)。
 
 服务层只编排流程，SQL 在 repositories.documents，向量化在 agent.embedding。
-资料按项目归属：同项目多 Agent 共享同一份资料，检索时按 project_id 圈定范围。
+资料按项目归属：同项目多会话共享同一份资料，检索时按 project_id 圈定范围。
 """
 from collections import defaultdict, deque
 import math
+import json
 
 import asyncpg
 
-from app.agent.embedding import embed_query, embed_texts
+from app.agent.embedding import embed_query, embed_texts, prepare_chunks
+from app.services.attachments import text_blocks
+from app.services.chunking import INDEX_VERSION
 from app.agent.rerank import rerank
 from app.repositories import documents
 
-# 每块约 300 字：块太大检索命中不精准，太小又丢上下文，取个够用的中间值。
-CHUNK_SIZE = 300
-# 召回阶段先多捞一些候选，再交给 rerank 精排出最终 top_k。
 RECALL_SIZE = 20
 
 
-def _split(content: str) -> list[str]:
-    """按固定长度切块：最小可行策略，不做按句/重叠的复杂切分。"""
-    text = content.strip()
-    return [text[i : i + CHUNK_SIZE] for i in range(0, len(text), CHUNK_SIZE)]
-
-
-async def ingest_document(pool: asyncpg.Pool, project_id, title: str, content: str):
-    """文档入库：切块→批量向量化→单事务写文档和所有块。
-
-    单事务关键：文档和它的块要么全写成功、要么全不写，
-    避免出现有文档没块(检索永远命中不到)或有块没文档(JOIN 丢数据)的半截状态。
-    """
-    chunks = _split(content)
-    embeddings = await embed_texts(chunks)
+async def ingest_document(pool, project_id, title, content=None, *, blocks=None, source_hash=None):
+    if blocks is None:
+        blocks = text_blocks(content or "", markdown=True)
+    if not blocks:
+        raise ValueError("资料内容不能为空")
+    content = "\n\n".join(block["text"] for block in blocks)
+    chunks = await prepare_chunks(blocks, title)
+    embeddings = await embed_texts([chunk["content"] for chunk in chunks])
     async with pool.acquire() as conn:
         async with conn.transaction():
-            doc = await documents.insert_document(conn, project_id, title, content)
+            if source_hash:
+                await conn.execute("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", str(project_id) + source_hash)
+                existing = await conn.fetchrow("SELECT d.id, (SELECT count(*) FROM chunks c WHERE c.document_id=d.id) AS count FROM documents d WHERE project_id=$1 AND source_hash=$2", project_id, source_hash)
+                if existing:
+                    return existing["id"], existing["count"]
+            doc = await documents.insert_document(conn, project_id, title, content, blocks, INDEX_VERSION, source_hash)
             await documents.insert_chunks(conn, doc["id"], chunks, embeddings)
     return doc["id"], len(chunks)
+
+
+async def reindex_documents(pool):
+    """显式维护操作：按文档原子替换索引。旧纯文本不伪造页码/表格。"""
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("SELECT id, title, content, blocks FROM documents WHERE index_version < $1", INDEX_VERSION)
+    rebuilt = 0
+    for row in rows:
+        blocks = json.loads(row["blocks"]) if row["blocks"] else text_blocks(row["content"], markdown=row["title"].lower().endswith((".md", ".markdown")))
+        chunks = await prepare_chunks(blocks, row["title"])
+        embeddings = await embed_texts([c["content"] for c in chunks])
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                current = await conn.fetchrow("SELECT index_version FROM documents WHERE id=$1 FOR UPDATE", row["id"])
+                if current is None or current["index_version"] >= INDEX_VERSION:
+                    continue
+                await conn.execute("DELETE FROM chunks WHERE document_id=$1", row["id"])
+                await documents.insert_chunks(conn, row["id"], chunks, embeddings)
+                await conn.execute("UPDATE documents SET blocks=$2::jsonb, index_version=$3 WHERE id=$1", row["id"], json.dumps(blocks, ensure_ascii=False), INDEX_VERSION)
+                rebuilt += 1
+    return rebuilt
 
 
 async def list_documents(pool: asyncpg.Pool, project_id) -> list[dict]:
@@ -74,6 +94,8 @@ async def retrieve(
         rows = await documents.search_chunks_with_doc(
             conn, project_id, query_embedding, RECALL_SIZE
         )
+    if not rows:
+        return []
     # Keep a queue per text: duplicate chunks may belong to different documents.
     rows_by_content = defaultdict(deque)
     for row in rows:
@@ -89,6 +111,6 @@ async def retrieve(
         hits.append({
             "title": row["title"], "content": content,
             "document_id": str(row["document_id"]), "chunk_id": str(row["chunk_id"]),
-            "similarity": similarity,
+            "similarity": similarity, "metadata": json.loads(row["metadata"]) if isinstance(row["metadata"], str) else row["metadata"],
         })
     return hits

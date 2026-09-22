@@ -116,7 +116,6 @@ async function removeThread(projectId, id, title) {
     </ul>
 
     <div class="footer">
-      <RouterLink to="/chat">← 返回对话</RouterLink>
       <RouterLink to="/documents">当前项目资料</RouterLink>
       <RouterLink to="/library">知识库图书馆</RouterLink>
       <RouterLink to="/config">模型配置</RouterLink>

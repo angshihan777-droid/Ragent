@@ -8,7 +8,12 @@ onMounted(() => dialog.value.showModal());
 <template>
   <dialog ref="dialog" class="source-dialog" aria-labelledby="source-title" @close="emit('close')" @click="event => { if (event.target === dialog) dialog.close(); }">
     <div class="trace-head"><h2 id="source-title">{{ source.title || '未知来源' }}</h2><button class="quiet" aria-label="关闭原文" autofocus @click="dialog.close()">×</button></div>
-    <div class="trace-body">{{ source.content }}</div>
+    <div class="trace-body">
+      <p v-if="source.citation_id">引用 [{{ source.citation_id }}]</p>
+      <p v-if="source.metadata?.page_start">第 {{ source.metadata.page_start }} 页</p>
+      <p v-if="source.metadata?.heading_path?.length">{{ source.metadata.heading_path.join(' / ') }}</p>
+      {{ source.content }}
+    </div>
   </dialog>
 </template>
 <style scoped>

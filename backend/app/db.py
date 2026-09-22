@@ -27,7 +27,7 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     pg_pool = await asyncpg.create_pool(dsn=settings.database_url)
     redis_client = aioredis.from_url(settings.redis_url)
-    # 启动即建表：schema.sql 全用 IF NOT EXISTS，重复启动安全
+    # 启动执行幂等建表与兼容迁移
     async with pg_pool.acquire() as conn:
         await conn.execute(_SCHEMA_PATH.read_text(encoding="utf-8"))
     try:

@@ -27,20 +27,20 @@ async def publish_sources(redis: aioredis.Redis, request_id, sources: list[dict]
     """发布一条「本次检索命中的资料」事件，先于正文 token 推送。
 
     type=sources 让 SSE 端和前端把它与吐字/终态区分开：仅用于展示 RAG 检索了什么，
-    不落库、不参与终态兜底，晚连的客户端丢了也不影响最终答案。
+    短期缓存支持晚连回放，worker 同时将最终来源随回答持久化。
     """
     payload = json.dumps({"type": "sources", "sources": sources})
-    await redis.publish(request_channel(request_id), payload)
+    await _publish_trace(redis, request_id, payload)
 
 
 async def publish_step(redis: aioredis.Redis, request_id, step: dict) -> None:
     """发布一条「过程链条」步骤事件：某节点开始(running)或完成(done)。
 
     type=step 让 SSE 端和前端把它与检索命中/吐字/终态区分开：仅用于右栏实时展示
-    执行进行到哪一步，不落库、不参与终态兜底，晚连的客户端丢了也不影响最终答案。
+    执行进行到哪一步；短期缓存支持回放，最终步骤随回答持久化。
     """
     payload = json.dumps({"type": "step", "step": step})
-    await redis.publish(request_channel(request_id), payload)
+    await _publish_trace(redis, request_id, payload)
 
 
 async def publish_done(
@@ -61,3 +61,13 @@ async def publish_done(
         }
     )
     await redis.publish(request_channel(request_id), payload)
+
+
+async def _publish_trace(redis, request_id, payload):
+    # 发布前保存短期事件，覆盖 POST 到 SSE 建连的窗口；完成后的来源另存 PostgreSQL。
+    key = request_channel(request_id) + ":trace"
+    async with redis.pipeline(transaction=True) as pipe:
+        pipe.rpush(key, payload)
+        pipe.expire(key, 3600)
+        pipe.publish(request_channel(request_id), payload)
+        await pipe.execute()

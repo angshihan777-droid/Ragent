@@ -39,3 +39,19 @@ async def embed_query(text: str) -> list[float]:
     """检索用：把单条查询转成一条向量。"""
     vecs = await embed_texts([text])
     return vecs[0]
+
+
+def _prepare_chunks_sync(blocks, title):
+    from tokenizers import Tokenizer
+    from app.services.chunking import split_blocks, TARGET_TOKENS
+    # 克隆实际 embedding tokenizer，禁用截断；不改变共享推理模型的 tokenizer。
+    original = _get_model().model.tokenizer
+    tokenizer = Tokenizer.from_str(original.to_str())
+    limit = (original.truncation or {}).get("max_length", 512)
+    tokenizer.no_truncation()
+    tokenizer.no_padding()
+    return split_blocks(blocks, tokenizer, title, min(TARGET_TOKENS, limit - 8))
+
+
+async def prepare_chunks(blocks, title):
+    return await asyncio.to_thread(_prepare_chunks_sync, blocks, title)

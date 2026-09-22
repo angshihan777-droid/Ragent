@@ -3,6 +3,8 @@
 向量以 pgvector 文本字面量 '[v1,v2,...]' 传入，用 ::vector 显式转型——
 asyncpg 无 pgvector 原生编码器，这是最小可行的传参方式。
 """
+import json
+
 import asyncpg
 
 
@@ -12,25 +14,28 @@ def _to_vector_literal(vec: list[float]) -> str:
 
 
 async def insert_document(
-    conn: asyncpg.Connection, project_id, title: str, content: str
+    conn: asyncpg.Connection, project_id, title: str, content: str, blocks=None, index_version=2, source_hash=None
 ) -> asyncpg.Record:
     """写入一篇文档（归属项目），返回其 id。"""
     return await conn.fetchrow(
         """
-        INSERT INTO documents (project_id, title, content)
-        VALUES ($1, $2, $3)
+        INSERT INTO documents (project_id, title, content, blocks, index_version, source_hash)
+        VALUES ($1, $2, $3, $4::jsonb, $5, $6)
         RETURNING id
         """,
         project_id,
         title,
         content,
+        json.dumps(blocks, ensure_ascii=False),
+        index_version,
+        source_hash,
     )
 
 
 async def insert_chunks(
     conn: asyncpg.Connection,
     document_id,
-    chunks: list[str],
+    chunks: list[dict],
     embeddings: list[list[float]],
 ) -> None:
     """批量写入一篇文档的所有文本块及其向量。
@@ -38,13 +43,13 @@ async def insert_chunks(
     chunks 与 embeddings 一一对应；用 executemany 一次写完，减少往返。
     """
     rows = [
-        (document_id, chunks[i], _to_vector_literal(embeddings[i]))
+        (document_id, chunks[i]["content"], _to_vector_literal(embeddings[i]), json.dumps(chunks[i]["metadata"], ensure_ascii=False))
         for i in range(len(chunks))
     ]
     await conn.executemany(
         """
-        INSERT INTO chunks (document_id, content, embedding)
-        VALUES ($1, $2, $3::vector)
+        INSERT INTO chunks (document_id, content, embedding, metadata)
+        VALUES ($1, $2, $3::vector, $4::jsonb)
         """,
         rows,
     )
@@ -81,7 +86,7 @@ async def search_chunks_with_doc(
     """
     return await conn.fetch(
         """
-        SELECT c.id AS chunk_id, d.id AS document_id, c.content, d.title,
+        SELECT c.id AS chunk_id, d.id AS document_id, c.content, d.title, c.metadata,
                1 - (c.embedding <=> $2::vector) AS similarity
         FROM chunks c
         JOIN documents d ON d.id = c.document_id

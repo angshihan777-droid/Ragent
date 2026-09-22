@@ -77,20 +77,18 @@ async def get_run_with_group(
     worker 收尾后要「拉同组下一个」，必须先知道这个 run 属于哪一组，
     所以联表把请求的分组字段一起取出来；同时带出本请求绑定的 user 消息内容，
     让执行只回答「这一条」的问题，不靠猜会话里最后一条。
-    同时联 threads/agents 带出本会话 Agent 的 system_prompt/use_rag 和 project_id，
-    供执行时决定「是否检索、检索哪个项目的资料、注入什么人设」。
+    联会话取得服务端限定的项目范围。
     """
     return await conn.fetchrow(
         """
         SELECT r.id AS run_id, r.request_id, r.status AS run_status,
                q.user_id, q.agent_id, q.thread_id,
                m.content AS question,
-               t.project_id, a.system_prompt, a.use_rag
+               t.project_id
         FROM agent_runs r
         JOIN agent_run_requests q ON q.id = r.request_id
         JOIN messages m ON m.id = q.message_id
         JOIN threads t ON t.id::text = q.thread_id
-        JOIN agents a ON a.id = t.agent_id
         WHERE r.id = $1
         """,
         run_id,

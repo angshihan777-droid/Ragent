@@ -29,17 +29,14 @@ function send(method, path, body) {
 }
 
 export const api = {
-  // ---- 项目 / Agent / 会话 ----
+  // ---- 项目 / 会话 ----
   listProjects: () => get("/projects"),
   createProject: (name, description) => send("POST", "/projects", { name, description }),
   deleteProject: (id) => send("DELETE", "/projects/" + id),
 
-  listAgents: (projectId) => get("/projects/" + projectId + "/agents"),
-  createAgent: (projectId, payload) => send("POST", "/projects/" + projectId + "/agents", payload),
-
   listThreads: (projectId) => get("/projects/" + projectId + "/threads"),
-  createThread: (projectId, agentId, title) =>
-    send("POST", "/projects/" + projectId + "/threads", { agent_id: agentId, title }),
+  createThread: (projectId, title) =>
+    send("POST", "/projects/" + projectId + "/threads", { title }),
   listThreadMessages: (threadId) => get("/threads/" + threadId + "/messages"),
   deleteThread: (threadId) => send("DELETE", "/threads/" + threadId),
 

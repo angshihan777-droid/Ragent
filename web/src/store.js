@@ -1,4 +1,4 @@
-// 全局轻量状态：当前选中的项目 + 其下 Agent/会话列表。
+// 全局轻量状态：当前选中的项目 + 其下会话列表。
 // 决策：只有「当前项目/会话」是跨页面共享的选择态，用一个 reactive 对象够了，
 // 不引 Pinia——单人精简版没有复杂状态流转，避免过度设计。
 import { reactive } from "vue";
@@ -7,7 +7,6 @@ import { api } from "./api.js";
 export const store = reactive({
   projects: [],
   currentProjectId: null,
-  agents: [],       // 当前项目下的 Agent
   threads: [],      // 当前项目下的会话
   currentThreadId: null,
   threadsByProject: {},
@@ -36,7 +35,7 @@ export const store = reactive({
     }
     this.threadsByProject = Object.fromEntries(Object.entries(this.threadsByProject).filter(([id]) => this.projects.some(p => p.id === id)));
     if (this.currentProjectId) await this.loadProjectDetail();
-    else { this.agents = []; this.threads = []; this.currentThreadId = null; }
+    else { this.threads = []; this.currentThreadId = null; }
   },
 
   async loadProjectThreads(id) {
@@ -50,10 +49,9 @@ export const store = reactive({
     if (!id) return;
     this.projectLoading = true;
     try {
-      const [agents, threads] = await Promise.all([api.listAgents(id), this.loadProjectThreads(id)]);
+      const threads = await this.loadProjectThreads(id);
       // Ignore late responses from a project that is no longer selected.
       if (this.currentProjectId !== id) return;
-      this.agents = agents;
       this.threads = threads;
       const preferred = this.currentThreadId || this.selectedThreads[id];
       this.currentThreadId = threads.find(t => t.id === preferred)?.id || threads[0]?.id || null;
@@ -67,7 +65,7 @@ export const store = reactive({
     if (this.currentProjectId) this.selectedThreads[this.currentProjectId] = this.currentThreadId;
     this.currentProjectId = id;
     this.currentThreadId = null;
-    this.agents = []; this.threads = [];
+    this.threads = [];
     await this.loadProjectDetail();
   },
 
@@ -108,7 +106,4 @@ export const store = reactive({
     this.library = all;
   },
 
-  agentOf(thread) {
-    return this.agents.find((a) => a.id === thread?.agent_id) || null;
-  },
 });

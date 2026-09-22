@@ -4,15 +4,15 @@ from functools import lru_cache
 from pydantic_settings import BaseSettings
 
 # 精简版：单用户、无登录，故 user 写成常量。
-# agent 不再写死：项目内可有多个 Agent，会话绑定哪个 Agent 由 threads 表记录，
-# 调度键 (user, agent, thread) 的 agent 段随之变化，天然让不同 Agent 独立排队。
+# 固定执行身份保留队列契约；产品没有 Agent 配置或选择。
 FIXED_USER_ID = "u1"
+KNOWLEDGE_AGENT_ID = "knowledge-base"
 
 
 class Settings(BaseSettings):
     # PostgreSQL 连接串，compose 内通过服务名 postgres 互联
     database_url: str = "postgresql://ragent:ragent@postgres:5432/ragent"
-    # Redis 连接串，M0 只用于连通性探测
+    # Redis 连接串：运行队列与请求事件通道
     redis_url: str = "redis://redis:6379/0"
 
     # LLM 接入：只保留一套 OpenAI 兼容配置。DeepSeek 本身就是 OpenAI 兼容接口，
@@ -23,7 +23,6 @@ class Settings(BaseSettings):
     llm_model: str = ""
 
     # RAG embedding：走本地 fastembed(ONNX)，不依赖外部 API。
-    # kuaipao/DeepSeek 都不提供 embedding 接口，本地模型离线、免费、稳定。
     # 只暴露模型名一个配置项，本地模型无需 base_url/key。
     embedding_model: str = "BAAI/bge-small-zh-v1.5"
 

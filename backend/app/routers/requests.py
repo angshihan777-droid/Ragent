@@ -24,6 +24,8 @@ async def create_request(
     result = await request_service.create_request(
         pool, redis, body.thread_id, body.content
     )
+    if result is None:
+        raise HTTPException(status_code=404, detail="thread not found")
     return result
 
 

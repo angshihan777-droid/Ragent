@@ -1,15 +1,16 @@
 """会话用例流程：项目内新建/列出会话，以及回放某会话的历史消息。"""
+import json
 import asyncpg
 
 from app.repositories import messages, requests, runs, threads
 
 
 async def create_thread(
-    pool: asyncpg.Pool, project_id, agent_id, title: str
+    pool: asyncpg.Pool, project_id, title: str
 ) -> dict:
-    """在项目下新建会话并绑定 Agent。"""
+    """在项目下新建知识库会话。"""
     async with pool.acquire() as conn:
-        row = await threads.insert_thread(conn, project_id, agent_id, title)
+        row = await threads.insert_thread(conn, project_id, title)
     return dict(row)
 
 
@@ -25,7 +26,7 @@ async def list_thread_messages(pool: asyncpg.Pool, thread_id: str) -> list[dict]
     async with pool.acquire() as conn:
         rows = await messages.list_messages_by_thread(conn, thread_id)
     return [
-        {"id": r["id"], "role": r["role"], "content": r["content"], "created_at": r["created_at"]}
+        {"id": r["id"], "role": r["role"], "content": r["content"], "created_at": r["created_at"], "sources": json.loads(r["sources"]), "steps": json.loads(r["steps"])}
         for r in rows
     ]
 

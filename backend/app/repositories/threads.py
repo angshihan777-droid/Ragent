@@ -1,19 +1,18 @@
-"""threads 表读写：只做单条 SQL，不含业务判断。"""
+"""项目会话的数据访问。"""
 import asyncpg
 
 
 async def insert_thread(
-    conn: asyncpg.Connection, project_id, agent_id, title: str
+    conn: asyncpg.Connection, project_id, title: str
 ) -> asyncpg.Record:
-    """在项目下新建会话并绑定一个 Agent，返回完整行。"""
+    """在项目下新建知识库会话，返回完整行。"""
     return await conn.fetchrow(
         """
-        INSERT INTO threads (project_id, agent_id, title)
-        VALUES ($1, $2, $3)
-        RETURNING id, project_id, agent_id, title, created_at
+        INSERT INTO threads (project_id, title)
+        VALUES ($1, $2)
+        RETURNING id, project_id, title, created_at
         """,
         project_id,
-        agent_id,
         title,
     )
 
@@ -24,7 +23,7 @@ async def list_threads_by_project(
     """列出某项目下全部会话，最新的排在前面，供会话列表展示。"""
     return await conn.fetch(
         """
-        SELECT id, project_id, agent_id, title, created_at
+        SELECT id, project_id, title, created_at
         FROM threads
         WHERE project_id = $1
         ORDER BY created_at DESC
@@ -34,10 +33,10 @@ async def list_threads_by_project(
 
 
 async def get_thread(conn: asyncpg.Connection, thread_id) -> asyncpg.Record | None:
-    """按 id 取单个会话；create_request 据此拿到它绑定的 agent_id。"""
+    """按 id 取单个会话；用于校验请求所属会话。"""
     return await conn.fetchrow(
         """
-        SELECT id, project_id, agent_id, title, created_at
+        SELECT id, project_id, title, created_at
         FROM threads
         WHERE id = $1
         """,
