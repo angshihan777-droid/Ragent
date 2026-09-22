@@ -74,6 +74,7 @@ async function removeThread(projectId, id, title) {
 
     <nav class="primary-nav" aria-label="工作台导航">
       <RouterLink to="/chat" @click="store.currentThreadId = null"><span>⊕</span> 新对话</RouterLink>
+      <RouterLink to="/intro"><span>✦</span> 使用介绍</RouterLink>
       <RouterLink to="/documents"><span>▧</span> 项目资料</RouterLink>
       <RouterLink to="/library"><span>▦</span> 知识库图书馆</RouterLink>
     </nav>
