@@ -22,6 +22,7 @@ code,.mono{font-family:"SFMono-Regular",Consolas,Menlo,monospace}
 a{color:inherit;text-decoration:none}
 .wrap{width:100%;max-width:1080px;margin:0 auto;padding:0 22px}
 section{padding:48px 0;scroll-margin-top:60px}
+#demo,#flow{background:var(--panel);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 h1,h2,h3,h4{color:var(--ink);font-weight:800;letter-spacing:-.02em;line-height:1.18}
 h2{font-size:clamp(26px,3.6vw,38px);margin-bottom:8px;text-align:center}
 h3{font-size:clamp(17px,2vw,21px)}
@@ -35,6 +36,7 @@ h3{font-size:clamp(17px,2vw,21px)}
 .topnav nav{display:flex;gap:22px}
 .topnav nav a{color:var(--text);font-weight:600;font-size:14px;padding:3px 0;border-bottom:2px solid transparent}
 .topnav nav a:hover{color:var(--accent-d);border-color:var(--accent)}
+.topnav nav a.active{color:var(--accent-d);border-color:var(--accent)}
 .spacer{flex:1}
 .cta-live{display:inline-flex;align-items:center;gap:7px;background:var(--accent);color:#fff;font-weight:700;padding:8px 15px;border-radius:9px;font-size:13px}
 .cta-live:hover{background:var(--accent-d)}
@@ -42,7 +44,7 @@ h3{font-size:clamp(17px,2vw,21px)}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(191,245,212,.7)}70%{box-shadow:0 0 0 7px rgba(191,245,212,0)}100%{box-shadow:0 0 0 0 rgba(191,245,212,0)}}
 @media(max-width:720px){.topnav nav{display:none}}
 /* hero */
-.hero{max-width:900px;margin:0 auto;padding:60px 22px 30px;text-align:center}
+.hero{max-width:900px;margin:0 auto;padding:38px 22px 14px;text-align:center}
 .eyebrow{display:inline-block;background:var(--accent-soft);color:var(--accent-d);font-weight:700;font-size:12.5px;padding:6px 14px;border-radius:999px;margin-bottom:18px}
 .hero h1{font-size:clamp(30px,5vw,48px);line-height:1.1;margin-bottom:16px}
 .hero h1 .dot{color:var(--accent)}
@@ -80,7 +82,7 @@ h3{font-size:clamp(17px,2vw,21px)}
 .dot3{width:10px;height:10px;border-radius:50%}.dot3.r{background:#ec6a5e}.dot3.y{background:#f4bf4f}.dot3.g{background:#61c554}
 .wintitle{margin-left:8px;color:var(--muted);font-size:12px;font-weight:600}
 .app3{display:grid;grid-template-columns:190px 1fr 270px;height:440px}
-@media(max-width:900px){.app3{grid-template-columns:1fr;height:auto}.app3 .col-side,.app3 .col-right{display:none}}
+@media(max-width:900px){.app3{grid-template-columns:1fr;height:auto}.app3 .col{max-height:none}.col-side{border-right:none;border-bottom:1px solid var(--border)}.col-mid{min-height:300px}.col-right{border-left:none;border-top:1px solid var(--border)}}
 .app3 .col{overflow:hidden;display:flex;flex-direction:column}
 .col-side{background:var(--panel2);border-right:1px solid var(--border);padding:12px 10px;gap:3px}
 .s-brand{display:flex;align-items:center;gap:7px;font-weight:800;color:var(--ink);font-size:14px;margin-bottom:11px}
@@ -266,7 +268,7 @@ footer .meta{margin-top:22px;font-size:12px;color:#7f8c84}
 <a id="top"></a>
 <header class="hero">
   <span class="eyebrow">🌿 LangGraph · RAG · 可靠编排</span>
-  <h1>会自己判断"要不要查资料"的<br><span class="dot">单知识库问答 Agent</span></h1>
+  <h1>会自己判断“要不要查资料”的<br><span class="dot">单知识库问答 Agent</span></h1>
   <p class="tag">上传 PDF / Word / Markdown，Ragent 用 <strong>LangGraph</strong> 编排：先决策再检索，<strong>两阶段召回 + 重排</strong>给出带引用的答案；底层 <strong>三元组 FIFO 串行</strong>与<strong>崩溃自动恢复</strong>保证并发下不乱序、不丢任务。</p>
   <div class="badges">
     <span class="b g">自主决定检索</span>
@@ -433,7 +435,7 @@ footer .meta{margin-top:22px;font-size:12px;color:#7f8c84}
   <div class="feat">
     <div class="fcard">
       <div class="fn">亮点一 · 自主决策检索</div>
-      <h3>先想"要不要查"，再决定怎么答</h3>
+      <h3>先想“要不要查”，再决定怎么答</h3>
       <div class="cmp">
         <div class="side bad">
           <div class="cap">✕ 普通 RAG</div>
@@ -649,6 +651,19 @@ footer .meta{margin-top:22px;font-size:12px;color:#7f8c84}
   function autoPlay(id,player){var sec=$(id);if(!sec||!('IntersectionObserver' in window)){player();return;}var done=false;var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting&&!done){done=true;player();io.disconnect();}});},{threshold:0.25});io.observe(sec);}
   autoPlay('demo',window.__playA);
   autoPlay('agent',playB);
+
+  /* scroll-spy 顶栏高亮 */
+  (function(){
+    var links=[].slice.call(document.querySelectorAll('.topnav nav a'));
+    var map={};links.forEach(function(a){var id=a.getAttribute('href').slice(1);var sec=document.getElementById(id);if(sec)map[id]=a;});
+    var ids=Object.keys(map);if(!ids.length||!('IntersectionObserver' in window))return;
+    var vis={};
+    var io=new IntersectionObserver(function(es){es.forEach(function(e){vis[e.target.id]=e.isIntersecting?e.intersectionRatio:0;});
+      var best=null,bv=0;ids.forEach(function(id){if((vis[id]||0)>bv){bv=vis[id];best=id;}});
+      links.forEach(function(a){a.classList.remove('active');});if(best&&map[best])map[best].classList.add('active');
+    },{rootMargin:'-45% 0px -45% 0px',threshold:[0,.25,.5,1]});
+    ids.forEach(function(id){io.observe(document.getElementById(id));});
+  })();
 })();
 </script>
 </body>
