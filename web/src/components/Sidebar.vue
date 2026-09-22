@@ -12,9 +12,6 @@ defineEmits(["collapse"]);
 const router = useRouter();
 const expanded = ref({});
 const loadingProjects = ref({});
-const docsBusy = ref({});      // 每个项目资料区的忙碌态（上传/删除/改名）
-const renaming = ref({});       // 正在改名的资料 id -> 新标题
-const uploaders = ref({});      // 每个项目的隐藏 file input 引用
 const error = ref("");
 watch(() => store.currentProjectId, id => { if (id) expanded.value[id] = true; }, { immediate: true });
 async function attempt(action) {
@@ -25,8 +22,7 @@ async function toggleProject(id) {
   expanded.value[id] = !expanded.value[id];
   if (!expanded.value[id]) return;
   loadingProjects.value[id] = true;
-  try { await Promise.all([store.loadProjectThreads(id), store.loadProjectDocuments(id)]); }
-  finally { loadingProjects.value[id] = false; }
+  try { await store.loadProjectThreads(id); } finally { loadingProjects.value[id] = false; }
 }
 async function newThread(projectId) {
   await store.selectProject(projectId);
@@ -70,52 +66,6 @@ async function removeThread(projectId, id, title) {
   if (projectId === store.currentProjectId) await store.loadProjectDetail();
   else await store.loadProjectThreads(projectId);
 }
-
-// ---- 左栏内联资料增删改：不跳页，直接在项目下管理文件 ----
-const ACCEPT = ".pdf,.docx,.md,.markdown,.txt";
-function pickFiles(projectId) {
-  uploaders.value[projectId]?.click();
-}
-async function onFiles(projectId, event) {
-  const files = Array.from(event.target.files || []);
-  event.target.value = "";
-  if (!files.length || docsBusy.value[projectId]) return;
-  docsBusy.value[projectId] = true;
-  const failures = [];
-  try {
-    for (const file of files) {
-      try {
-        if (!/\.(pdf|docx|md|markdown|txt)$/i.test(file.name) || file.size > 20 * 1024 * 1024)
-          throw new Error("仅支持 PDF/DOCX/MD/TXT，单文件≤20MB");
-        await api.uploadDocument(projectId, file);
-      } catch (e) { failures.push(file.name + "：" + e.message); }
-    }
-    await store.loadProjectDocuments(projectId);
-    if (failures.length) error.value = failures.join("；");
-  } finally { docsBusy.value[projectId] = false; }
-}
-async function removeDoc(projectId, doc) {
-  if (docsBusy.value[projectId]) return;
-  if (!confirm('删除资料「' + doc.title + '」？正文与检索索引会一并删除，不可恢复。')) return;
-  docsBusy.value[projectId] = true;
-  try { await api.deleteDocument(doc.id); await store.loadProjectDocuments(projectId); }
-  finally { docsBusy.value[projectId] = false; }
-}
-function startRename(doc) { renaming.value[doc.id] = doc.title; }
-function cancelRename(doc) { delete renaming.value[doc.id]; }
-async function commitRename(projectId, doc) {
-  const next = (renaming.value[doc.id] || "").trim();
-  if (!next || next === doc.title) { delete renaming.value[doc.id]; return; }
-  docsBusy.value[projectId] = true;
-  try {
-    // 改名需带上正文与 revision（乐观锁），先取详情再整体回写标题
-    const detail = await api.getDocument(doc.id);
-    await api.updateDocument(doc.id, { title: next, content: detail.content, revision: detail.revision });
-    delete renaming.value[doc.id];
-    await store.loadProjectDocuments(projectId);
-  } catch (e) { error.value = "改名失败：" + e.message; }
-  finally { docsBusy.value[projectId] = false; }
-}
 </script>
 
 <template>
@@ -149,27 +99,6 @@ async function commitRename(projectId, doc) {
           </li>
           <li v-if="!loadingProjects[p.id] && !store.threadsByProject[p.id]?.length" class="empty">暂无会话，点项目旁 + 新建</li>
         </ul>
-        <div v-if="expanded[p.id]" class="docs-block">
-          <div class="docs-head">
-            <span>资料</span>
-            <button class="quiet mini" :disabled="docsBusy[p.id]" :title="'上传资料到 ' + p.name" @click="pickFiles(p.id)">＋</button>
-            <input :ref="el => uploaders[p.id] = el" hidden type="file" :accept="ACCEPT" multiple @change="e => onFiles(p.id, e)" />
-          </div>
-          <ul class="doc-tree">
-            <li v-for="d in store.docsByProject[p.id] || []" :key="d.id" class="doc-row">
-              <template v-if="renaming[d.id] !== undefined">
-                <input class="doc-rename" v-model="renaming[d.id]" :aria-label="'重命名 ' + d.title" @keyup.enter="commitRename(p.id, d)" @keyup.esc="cancelRename(d)" @blur="commitRename(p.id, d)" />
-              </template>
-              <template v-else>
-                <span class="doc-name" :title="d.title + '（' + d.chunk_count + ' 块）'" @dblclick="startRename(d)">▤ {{ d.title }}</span>
-                <button class="quiet doc-act" :aria-label="'重命名 ' + d.title" @click="startRename(d)">✎</button>
-                <button class="quiet del" :aria-label="'删除资料 ' + d.title" @click="removeDoc(p.id, d)">×</button>
-              </template>
-            </li>
-            <li v-if="docsBusy[p.id]" class="empty">处理中…</li>
-            <li v-else-if="!(store.docsByProject[p.id] || []).length" class="empty">暂无资料，点＋上传 PDF/Word/MD</li>
-          </ul>
-        </div>
       </li>
       <li v-if="!store.projects.length" class="empty">还没有项目，点 + 新建</li>
     </ul>
@@ -190,15 +119,5 @@ async function commitRename(projectId, doc) {
 .primary-nav { display: grid; gap: 5px; margin-bottom: 22px; }.primary-nav a { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); padding: 11px 13px; border-radius: 8px; font-size: 13px; }.primary-nav a span { font-size: 18px; width: 20px; }.primary-nav a:hover { background: #edf1ee; }.primary-nav .router-link-active { background: var(--accent-soft); color: var(--accent-d); font-weight: 650; }
 .section-head { display: flex; align-items: center; justify-content: space-between; color: var(--faint); font-size: 11px; padding: 0 10px 10px; }.mini { background: transparent; color: var(--muted); width: 23px; height: 23px; border-radius: 6px; padding: 0; font-size: 17px; }.mini:hover { color: var(--accent); background: var(--accent-soft); }
 .project-tree, .thread-tree { list-style: none; margin: 0; padding: 0; }.project-tree { padding-bottom: 20px; }.project-node { margin-bottom: 8px; }.project-row, .thread-row { display: flex; align-items: center; gap: 2px; border-radius: 7px; }.project-row.active { background: #edf1ee; }.thread-row.active { background: var(--accent-soft); }.thread-row.active .name { color: var(--accent-d); }.thread-tree { margin: 5px 0 10px 17px; padding-left: 9px; border-left: 1px solid var(--border); }.name { flex: 1; min-width: 0; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 9px 5px; font-size: 12px; }.expander { padding: 5px 7px; }.del { padding: 5px; color: var(--muted); }.del:hover { color: #ad3737; }.empty { padding: 8px 6px; font-size: 11px; color: var(--faint); }.nav-error { color: #a83232; font-size: 12px; }
-.docs-block { margin: 2px 0 12px 17px; padding-left: 9px; border-left: 1px solid var(--border); }
-.docs-head { display: flex; align-items: center; gap: 4px; color: var(--faint); font-size: 10.5px; font-weight: 700; letter-spacing: .5px; padding: 4px 6px 2px; text-transform: uppercase; }
-.docs-head span { flex: 1; }
-.doc-tree { list-style: none; margin: 0; padding: 0; }
-.doc-row { display: flex; align-items: center; gap: 2px; border-radius: 7px; }
-.doc-row:hover { background: #eef2f0; }
-.doc-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 7px 5px; font-size: 12px; color: var(--muted); cursor: default; }
-.doc-act { padding: 5px; color: var(--faint); font-size: 12px; }
-.doc-act:hover { color: var(--accent-d); }
-.doc-rename { flex: 1; padding: 5px 7px; font-size: 12px; border: 1px solid var(--accent); border-radius: 6px; }
 .footer { margin-top: auto; padding: 15px 5px 2px; border-top: 1px solid var(--line); }.settings-link { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--text); text-decoration: none; font-size: 12px; padding: 8px 3px; }.settings-link small { color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 110px; font-size: 10px; }.workspace-label { font-size: 10px; color: var(--faint); padding: 12px 3px 2px; }
 </style>

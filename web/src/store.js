@@ -10,7 +10,6 @@ export const store = reactive({
   threads: [],      // 当前项目下的会话
   currentThreadId: null,
   threadsByProject: {},
-  docsByProject: {},   // 每个项目的资料列表，供左栏内联增删改
   projectLoading: false,
 
   // LLM 配置：左栏展示当前模型并支持切换；models 是可切换的候选列表
@@ -39,12 +38,6 @@ export const store = reactive({
     const threads = await api.listThreads(id);
     this.threadsByProject[id] = threads;
     return threads;
-  },
-
-  async loadProjectDocuments(id) {
-    const docs = await api.listDocuments(id);
-    this.docsByProject[id] = docs;
-    return docs;
   },
 
   async loadProjectDetail() {
