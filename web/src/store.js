@@ -10,6 +10,9 @@ export const store = reactive({
   agents: [],       // 当前项目下的 Agent
   threads: [],      // 当前项目下的会话
   currentThreadId: null,
+  threadsByProject: {},
+  selectedThreads: {},
+  projectLoading: false,
 
   // LLM 配置：左栏展示当前模型并支持切换；models 是可切换的候选列表
   llm: { base_url: "", model: "", key_set: false },
@@ -31,30 +34,47 @@ export const store = reactive({
     if (!this.projects.find((p) => p.id === this.currentProjectId)) {
       this.currentProjectId = this.projects[0]?.id || null;
     }
+    this.threadsByProject = Object.fromEntries(Object.entries(this.threadsByProject).filter(([id]) => this.projects.some(p => p.id === id)));
     if (this.currentProjectId) await this.loadProjectDetail();
+    else { this.agents = []; this.threads = []; this.currentThreadId = null; }
+  },
+
+  async loadProjectThreads(id) {
+    const threads = await api.listThreads(id);
+    this.threadsByProject[id] = threads;
+    return threads;
   },
 
   async loadProjectDetail() {
-    // 切项目要同时刷新它的 Agent 与会话；会话默认选最新一条
-    const [agents, threads] = await Promise.all([
-      api.listAgents(this.currentProjectId),
-      api.listThreads(this.currentProjectId),
-    ]);
-    this.agents = agents;
-    this.threads = threads;
-    if (!this.threads.find((t) => t.id === this.currentThreadId)) {
-      this.currentThreadId = this.threads[0]?.id || null;
+    const id = this.currentProjectId;
+    if (!id) return;
+    this.projectLoading = true;
+    try {
+      const [agents, threads] = await Promise.all([api.listAgents(id), this.loadProjectThreads(id)]);
+      // Ignore late responses from a project that is no longer selected.
+      if (this.currentProjectId !== id) return;
+      this.agents = agents;
+      this.threads = threads;
+      const preferred = this.currentThreadId || this.selectedThreads[id];
+      this.currentThreadId = threads.find(t => t.id === preferred)?.id || threads[0]?.id || null;
+    } finally {
+      if (this.currentProjectId === id) this.projectLoading = false;
     }
   },
 
   async selectProject(id) {
+    if (this.currentProjectId === id) return;
+    if (this.currentProjectId) this.selectedThreads[this.currentProjectId] = this.currentThreadId;
     this.currentProjectId = id;
     this.currentThreadId = null;
+    this.agents = []; this.threads = [];
     await this.loadProjectDetail();
   },
 
   async selectThread(id) {
+    if (!this.threads.some(t => t.id === id)) return;
     this.currentThreadId = id;
+    this.selectedThreads[this.currentProjectId] = id;
   },
 
   async deleteThread(id) {

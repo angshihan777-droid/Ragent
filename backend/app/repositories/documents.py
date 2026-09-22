@@ -76,12 +76,13 @@ async def search_chunks_with_doc(
 ) -> list[asyncpg.Record]:
     """检索并带出每块所属文档标题，供离线评测判断「命中的是不是正确资料」。
 
-    与线上主检索(search_chunks)分开：评测需要文档归属信息，主检索不需要，
-    各取所需、互不影响。
+    线上溯源与离线评测共用；同时返回真实余弦相似度及来源 ID。
+    排序仍按向量距离，后续精排只改变顺序，不把相似度伪装成重排概率。
     """
     return await conn.fetch(
         """
-        SELECT c.content, d.title
+        SELECT c.id AS chunk_id, d.id AS document_id, c.content, d.title,
+               1 - (c.embedding <=> $2::vector) AS similarity
         FROM chunks c
         JOIN documents d ON d.id = c.document_id
         WHERE d.project_id = $1

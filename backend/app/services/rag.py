@@ -3,6 +3,9 @@
 服务层只编排流程，SQL 在 repositories.documents，向量化在 agent.embedding。
 资料按项目归属：同项目多 Agent 共享同一份资料，检索时按 project_id 圈定范围。
 """
+from collections import defaultdict, deque
+import math
+
 import asyncpg
 
 from app.agent.embedding import embed_query, embed_texts
@@ -71,8 +74,21 @@ async def retrieve(
         rows = await documents.search_chunks_with_doc(
             conn, project_id, query_embedding, RECALL_SIZE
         )
-    # 精排在原文上做；再按精排后的原文映射回其文档标题（块原文唯一，足以定位来源）
-    title_of = {r["content"]: r["title"] for r in rows}
+    # Keep a queue per text: duplicate chunks may belong to different documents.
+    rows_by_content = defaultdict(deque)
+    for row in rows:
+        rows_by_content[row["content"]].append(row)
     candidates = [r["content"] for r in rows]
     ranked = await rerank(question, candidates, top_k)
-    return [{"title": title_of.get(c, "未知来源"), "content": c} for c in ranked]
+    hits = []
+    for content in ranked:
+        row = rows_by_content[content].popleft()
+        similarity = row["similarity"]
+        # Floating point round-off can exceed cosine bounds; NaN must not enter JSON.
+        similarity = max(-1.0, min(1.0, float(similarity))) if similarity is not None and math.isfinite(similarity) else None
+        hits.append({
+            "title": row["title"], "content": content,
+            "document_id": str(row["document_id"]), "chunk_id": str(row["chunk_id"]),
+            "similarity": similarity,
+        })
+    return hits

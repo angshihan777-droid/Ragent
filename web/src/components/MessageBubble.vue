@@ -3,6 +3,7 @@
 import { computed } from "vue";
 import { renderInline } from "../md.js";
 
+defineEmits(["trace"]);
 const props = defineProps({
   role: { type: String, required: true }, // "user" | "assistant"
   content: { type: String, default: "" },
@@ -21,7 +22,7 @@ const html = computed(() => renderInline(props.content));
       <!-- 检索命中提示：让 RAG 不是黑盒，点开能看到这次到底检索到哪些资料原文 -->
       <details v-if="sources.length" class="sources">
         <summary>本次检索到 {{ sources.length }} 条资料</summary>
-        <div v-for="(s, i) in sources" :key="i" class="src-item">{{ s }}</div>
+        <button v-for="(s, i) in sources" :key="i" class="src-item" @click="$emit('trace', s)">{{ s.title || "未知来源" }} · 查看原文</button>
       </details>
       <div class="bubble" :class="{ error }">
         <span v-if="pending" class="dots">思考中<i>.</i><i>.</i><i>.</i></span>

@@ -23,7 +23,7 @@ async def publish_token(redis: aioredis.Redis, request_id, token: str) -> None:
     await redis.publish(request_channel(request_id), payload)
 
 
-async def publish_sources(redis: aioredis.Redis, request_id, sources: list[str]) -> None:
+async def publish_sources(redis: aioredis.Redis, request_id, sources: list[dict]) -> None:
     """发布一条「本次检索命中的资料」事件，先于正文 token 推送。
 
     type=sources 让 SSE 端和前端把它与吐字/终态区分开：仅用于展示 RAG 检索了什么，

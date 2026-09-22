@@ -30,7 +30,7 @@ class AgentState(TypedDict):
     默认 reducer（覆盖）即可，检索只发生在入口一次。
     """
     messages: Annotated[list[AnyMessage], add_messages]
-    sources: list[str]
+    sources: list[dict]
 
 
 async def _build_llm(pool) -> ChatOpenAI:
@@ -63,7 +63,7 @@ async def _retrieve_node(state: AgentState, config: RunnableConfig) -> AgentStat
     if cfg["system_prompt"]:
         system_msgs.append(SystemMessage(content=cfg["system_prompt"]))
     # use_rag=False（如「通用助手」）跳过检索；检索按 project_id 圈定本项目资料
-    sources: list[str] = []
+    sources: list[dict] = []
     if cfg["use_rag"]:
         pool = cfg["pool"]
         # 取用户问题原文（此时 messages 里只有一条 HumanMessage）

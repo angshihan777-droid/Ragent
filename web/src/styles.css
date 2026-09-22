@@ -21,8 +21,8 @@
   --card: #ffffff;
   --border: #e5e5e6;
   --line: #ececf1;
-  --btn: #0d0d0d;
-  --btn-h: #2d2d31;
+  --btn: #087f63;
+  --btn-h: #06664f;
   --shadow: 0 12px 40px rgba(15, 15, 25, 0.08);
   --shadow-sm: 0 2px 8px rgba(15, 15, 25, 0.06);
 }
@@ -44,7 +44,7 @@ button {
   color: #fff; box-shadow: none;
   transition: background 0.15s, transform 0.15s, opacity 0.15s;
 }
-button:hover:not(:disabled) { background: var(--btn-h); }
+button:where(:hover:not(:disabled)) { background: var(--btn-h); }
 button:disabled { opacity: 0.4; cursor: not-allowed; }
 input, textarea, select {
   font: inherit; width: 100%; padding: 10px 13px;
@@ -57,3 +57,10 @@ input:focus, textarea:focus, select:focus {
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 textarea { resize: vertical; }
+
+/* Low-specificity default hover cannot override component variants. */
+.quiet { background: transparent; color: var(--muted); border: 1px solid transparent; padding: 7px 10px; box-shadow: none; }
+.quiet:hover:not(:disabled) { color: var(--ink); background: var(--panel2); }
+button:focus-visible, a:focus-visible, [role="separator"]:focus-visible { outline: 2px solid var(--accent-d); outline-offset: 2px; }
+body.resizing { cursor: col-resize; user-select: none; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }

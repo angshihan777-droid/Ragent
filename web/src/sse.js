@@ -2,8 +2,8 @@
 // 决策：用 fetch + ReadableStream 而非 EventSource。
 // 面试理由：EventSource 只能 GET 且流结束后会自动重连、重复触发；
 // 我们的链路是「先 POST 拿 id 再 GET stream」，用 reader 能读完 done 就主动收手，不重连。
-export async function readStream(url, onToken, onSources, onStep) {
-  const res = await fetch(url);
+export async function readStream(url, onToken, onSources, onStep, signal) {
+  const res = await fetch(url, { signal });
   if (!res.ok) throw new Error("SSE 连接失败: " + res.status);
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
