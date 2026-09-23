@@ -3,6 +3,7 @@
 import { ref, onMounted } from "vue";
 import { store } from "../store.js";
 import { api } from "../api.js";
+import Icon from "../components/Icon.vue";
 
 const baseUrl = ref("");
 const apiKey = ref(""); // 空=不改密钥；库里已存时占位提示「已设置」
@@ -79,54 +80,73 @@ async function save() {
 </script>
 
 <template>
-  <div class="card">
-    <h2>模型配置</h2>
-    <p class="hint">支持任意 OpenAI 兼容地址（如 DeepSeek）。填好地址密钥可自动拉取模型列表。</p>
+  <div class="config">
+    <header class="heading">
+      <h1>模型配置</h1>
+      <p>支持任意 OpenAI 兼容地址（如 DeepSeek）。填好地址和密钥即可自动拉取可用模型。</p>
+    </header>
 
-    <label>接口地址 (base_url)</label>
-    <input v-model="baseUrl" placeholder="https://api.deepseek.com/v1" />
+    <div class="card">
+      <div class="field">
+        <label for="cfg-base">接口地址</label>
+        <input id="cfg-base" v-model="baseUrl" placeholder="https://api.deepseek.com/v1" :disabled="loading" />
+        <small>OpenAI 兼容的 base_url，通常以 /v1 结尾。</small>
+      </div>
 
-    <label>API 密钥</label>
-    <input
-      v-model="apiKey"
-      type="password"
-      :placeholder="keySet ? '已设置（留空则不修改）' : '请输入密钥'"
-    />
+      <div class="field">
+        <label for="cfg-key">API 密钥</label>
+        <input
+          id="cfg-key"
+          v-model="apiKey"
+          type="password"
+          :disabled="loading"
+          :placeholder="keySet ? '已设置（留空则不修改）' : '请输入密钥'"
+        />
+        <small>
+          <span v-if="keySet" class="badge badge-brand"><Icon name="check" :size="12" />已保存密钥</span>
+          <span v-else class="badge badge-danger">尚未配置</span>
+          密钥只保存在本地后端，不会回显。
+        </small>
+      </div>
 
-    <div class="actions">
-      <button class="ghost" :disabled="fetching || !baseUrl.trim()" @click="fetchModels">
-        {{ fetching ? "拉取中" : "拉取模型" }}
-      </button>
+      <div class="field">
+        <div class="field-head">
+          <label for="cfg-model">模型</label>
+          <button class="quiet" :disabled="fetching || !baseUrl.trim()" @click="fetchModels">
+            <Icon name="refresh" :size="14" />{{ fetching ? "拉取中…" : "拉取模型" }}
+          </button>
+        </div>
+        <select id="cfg-model" v-model="model" :disabled="models.length === 0">
+          <option v-for="m in models" :key="m" :value="m">{{ m }}</option>
+        </select>
+        <small>{{ models.length ? `共 ${models.length} 个可选模型。` : "填好地址后点击“拉取模型”获取列表。" }}</small>
+      </div>
+
+      <div v-if="msg" :class="msgType === 'ok' ? 'notice' : 'error-box'" role="status">
+        <Icon :name="msgType === 'ok' ? 'check' : 'alert'" :size="15" />{{ msg }}
+      </div>
+
+      <footer class="actions">
+        <button class="btn-brand" :disabled="saving || !baseUrl.trim() || !model" @click="save">
+          {{ saving ? "保存中…" : "保存配置" }}
+        </button>
+      </footer>
     </div>
-
-    <label>模型</label>
-    <select v-model="model" :disabled="models.length === 0">
-      <option v-for="m in models" :key="m" :value="m">{{ m }}</option>
-    </select>
-
-    <div class="actions">
-      <button :disabled="saving || !baseUrl.trim() || !model" @click="save">
-        {{ saving ? "保存中" : "保存配置" }}
-      </button>
-    </div>
-
-    <div v-if="msg" :class="msgType">{{ msg }}</div>
   </div>
 </template>
 
 <style scoped>
-.card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 24px;
-}
-h2 { margin: 0 0 4px; }
-.hint { color: var(--muted); margin: 0 0 20px; font-size: 14px; }
-label { display: block; margin: 14px 0 6px; font-size: 14px; font-weight: 500; }
-.actions { margin-top: 16px; }
-.ghost { background: var(--panel2); color: var(--text); border: 1px solid var(--border); }
-.ghost:hover:not(:disabled) { background: var(--line); }
-.ok { margin-top: 16px; padding: 12px 14px; background: var(--accent-soft); border: 1px solid rgba(16,163,127,0.35); border-radius: 10px; color: var(--accent-d); font-size: 14px; }
-.err { margin-top: 16px; padding: 12px 14px; background: rgba(224,92,92,0.12); border: 1px solid rgba(224,92,92,0.35); border-radius: 10px; color: #c0392b; font-size: 14px; }
+.config { width: 100%; max-width: 620px; margin: 0 auto; padding: var(--s-7) var(--s-6); box-sizing: border-box; }
+.heading h1 { margin: 0; font-size: var(--fs-display); letter-spacing: -.02em; }
+.heading p { margin: var(--s-2) 0 var(--s-6); color: var(--muted); font-size: var(--fs-sm); line-height: 1.7; }
+.card { padding: var(--s-5); }
+.field + .field { margin-top: var(--s-5); padding-top: var(--s-5); border-top: 1px solid var(--border-soft); }
+.field-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); margin-bottom: var(--s-2); }
+.field-head label { margin: 0; }
+.field-head button { padding: var(--s-2) var(--s-3); font-size: var(--fs-xs); }
+label { display: block; margin: 0 0 var(--s-2); font-size: var(--fs-sm); font-weight: 500; color: var(--text); }
+small { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-2); color: var(--faint); font-size: var(--fs-xs); line-height: 1.6; }
+.notice, .error-box { margin-top: var(--s-5); }
+.actions { display: flex; justify-content: flex-end; margin-top: var(--s-5); padding-top: var(--s-5); border-top: 1px solid var(--border-soft); }
+@media (max-width: 600px) { .config { padding: var(--s-5) var(--s-4); } }
 </style>

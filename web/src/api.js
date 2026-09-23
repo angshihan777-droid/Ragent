@@ -1,6 +1,10 @@
 // 统一封装后端调用：把 API 契约收在一处，页面组件只管调用不拼 URL。
 // 面试理由：接口地址/错误处理集中管理，改后端契约时只动这一个文件。
-const BASE = "http://localhost:8000";
+//
+// 地址来源优先级：VITE_API_BASE > 同源相对路径。
+// 决策：不再硬编码 localhost:8000——那样一部署到静态托管就会去连访问者本机的 8000 端口，
+// 必然失败。开发态由 vite 代理把 /api 转发到后端，生产态可通过环境变量指向真实地址。
+const BASE = (import.meta.env.VITE_API_BASE ?? "/api").replace(/\/$/, "");
 
 async function toJson(res) {
   // 后端出错时 detail 里有中文原因，透出来方便前端展示，而不是吞掉只报状态码

@@ -71,6 +71,9 @@ async def stream_request(pool, redis, request_id):
             payload = json.loads(msg["data"])
             if payload["type"] == "done":
                 last_check = 0  # Don't trust transient event content; reconcile committed result.
+            elif payload["type"] == "token":
+                # 增量不进 trace、不做去重：晚连的客户端本来就该靠 done 的完整正文对齐。
+                yield _event("token", {"token": payload["token"]})
             elif payload["type"] in ("step", "sources"):
                 identity = json.dumps(payload, sort_keys=True)
                 if identity not in seen:

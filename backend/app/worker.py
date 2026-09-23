@@ -10,7 +10,7 @@ import redis.asyncio as aioredis
 
 from app.agent.graph import stream_agent
 from app.config import get_settings
-from app.events import publish_done, publish_sources, publish_step
+from app.events import publish_done, publish_sources, publish_step, publish_token
 from app.queue import QUEUE_KEY, enqueue_run
 from app.repositories import messages, requests, runs
 from app.services.errors import public_error
@@ -43,7 +43,17 @@ async def _heartbeat_loop(pool, run_id, owner):
 
 async def _execute(pool, redis, thread_id, request_id, question, project_id):
     parts, sources, steps = [], [], {}
-    async for kind, data in stream_agent(question, pool, project_id, thread_id, request_id):
+    buffered = []
+    # 实时增量只服务于"正在打字"的观感；发布失败不能连带把已经跑起来的回答打断，
+    # 所以增量走 _notify（吞掉 Redis 故障），而终态在事务提交后照常发布。
+    async def on_token(piece):
+        buffered.append(piece)
+        if sum(len(p) for p in buffered) >= 48:
+            chunk, buffered[:] = "".join(buffered), []
+            await _notify(publish_token, redis, request_id, chunk)
+
+    async for kind, data in stream_agent(question, pool, project_id, thread_id, request_id,
+                                         on_token=on_token):
         if kind == "step":
             steps[data["key"]] = data
             await _notify(publish_step, redis, request_id, data)
@@ -51,8 +61,10 @@ async def _execute(pool, redis, thread_id, request_id, question, project_id):
             sources = data
             await _notify(publish_sources, redis, request_id, data)
         else:
-            # Only publish authoritative text after the fenced database commit.
+            # final：权威正文。Only publish after the fenced database commit.
             parts.append(data)
+    if buffered:
+        await _notify(publish_token, redis, request_id, "".join(buffered))
     return "".join(parts), sources, list(steps.values())
 
 

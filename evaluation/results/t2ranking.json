@@ -1,0 +1,6749 @@
+{
+  "started_at": "2026-09-22T08:06:58.845897+00:00",
+  "checks": [
+    {
+      "name": "enough_queries_selected",
+      "passed": true,
+      "selected": 300,
+      "requested": 300,
+      "pid_cap": 500000,
+      "positives_per_query": "3-8"
+    },
+    {
+      "name": "all_positive_passages_present",
+      "passed": true,
+      "missing": 0
+    },
+    {
+      "name": "selected_queries_usable_after_load",
+      "passed": true,
+      "usable": 300
+    },
+    {
+      "name": "rerank_improves_mrr_over_vector_only",
+      "passed": true,
+      "vector": 0.9372,
+      "pipeline": 0.9506
+    },
+    {
+      "name": "rerank_costs_latency",
+      "passed": true,
+      "vector_p50": 26.7,
+      "pipeline_p50": 2376.3
+    },
+    {
+      "name": "temporary_database_removed",
+      "passed": true
+    }
+  ],
+  "failures": [],
+  "distractors": {
+    "bm25_hard_negatives": 759,
+    "random": 0,
+    "bm25_rank_range": [
+      4,
+      40
+    ],
+    "queries_with_hard_negatives": 22812
+  },
+  "dataset": {
+    "name": "THUIR/T2Ranking",
+    "split": "dev (qrels.retrieval.dev.tsv)",
+    "license": "apache-2.0",
+    "pid_cap": 500000,
+    "passages": 1991,
+    "positives": 1241,
+    "queries": 300,
+    "seed": 20260922,
+    "corpus_sha256": "149a3c13544c20c4e0af22062913bb1a6631e37195bb665f5b9c6c4f7a5f77ca",
+    "embedding": "BAAI/bge-small-zh-v1.5",
+    "reranker": "BAAI/bge-reranker-base",
+    "versions": {
+      "fastembed": "0.4.2",
+      "asyncpg": "0.30.0",
+      "tokenizers": "0.23.2"
+    }
+  },
+  "retrieval": {
+    "ingest_seconds": 211.9,
+    "chunks": 5771,
+    "unit": "chunk -> source passage pid; metrics over top-K chunks, truncated once at K",
+    "metrics": {
+      "vector_top3": {
+        "recall": 0.6735753968253968,
+        "mrr": 0.9372222222222222,
+        "ndcg": 0.8756797269634471,
+        "hit1": 0.9033333333333333,
+        "p50_ms": 26.7,
+        "p95_ms": 38.8,
+        "recall_at_10": 0.6735753968253968
+      },
+      "pipeline_20_rerank3": {
+        "recall": 0.6796388888888889,
+        "mrr": 0.9505555555555556,
+        "ndcg": 0.8831285248401517,
+        "hit1": 0.9166666666666666,
+        "p50_ms": 2376.3,
+        "p95_ms": 3570.2,
+        "recall_at_10": 0.6796388888888889
+      }
+    },
+    "records": [
+      {
+        "qid": "13321",
+        "question": "印象派为什么被鄙视",
+        "relevant": [
+          21399,
+          127806,
+          294938
+        ],
+        "vector_top3": [
+          294938,
+          294938,
+          21399
+        ],
+        "vector_top3_ms": 29.91,
+        "pipeline_20_rerank3": [
+          262556,
+          127806,
+          294938
+        ],
+        "pipeline_20_rerank3_ms": 10097.64
+      },
+      {
+        "qid": "21455",
+        "question": "嵩县的寺庙有哪些",
+        "relevant": [
+          37369,
+          174981,
+          206923
+        ],
+        "vector_top3": [
+          37369,
+          206923,
+          174981
+        ],
+        "vector_top3_ms": 35.52,
+        "pipeline_20_rerank3": [
+          174981,
+          174981,
+          174981
+        ],
+        "pipeline_20_rerank3_ms": 6583.79
+      },
+      {
+        "qid": "20330",
+        "question": "手机怎么上门维修",
+        "relevant": [
+          34950,
+          34951,
+          376420,
+          426025
+        ],
+        "vector_top3": [
+          426025,
+          376420,
+          34950
+        ],
+        "vector_top3_ms": 39.35,
+        "pipeline_20_rerank3": [
+          376420,
+          34950,
+          426025
+        ],
+        "pipeline_20_rerank3_ms": 4387.47
+      },
+      {
+        "qid": "19967",
+        "question": "大连市结核病医院是几级",
+        "relevant": [
+          111608,
+          155132,
+          432970
+        ],
+        "vector_top3": [
+          466240,
+          466240,
+          155132
+        ],
+        "vector_top3_ms": 49.71,
+        "pipeline_20_rerank3": [
+          111608,
+          466240,
+          155132
+        ],
+        "pipeline_20_rerank3_ms": 3881.8
+      },
+      {
+        "qid": "22425",
+        "question": "石家庄妇幼保健院四维几点上班",
+        "relevant": [
+          216879,
+          267198,
+          363258,
+          384030
+        ],
+        "vector_top3": [
+          267198,
+          363258,
+          216879
+        ],
+        "vector_top3_ms": 66.43,
+        "pipeline_20_rerank3": [
+          267198,
+          384030,
+          216879
+        ],
+        "pipeline_20_rerank3_ms": 3528.74
+      },
+      {
+        "qid": "18479",
+        "question": "法拉利加满1箱油多少钱",
+        "relevant": [
+          31043,
+          112009,
+          478765
+        ],
+        "vector_top3": [
+          478765,
+          31043,
+          112009
+        ],
+        "vector_top3_ms": 60.79,
+        "pipeline_20_rerank3": [
+          478765,
+          31043,
+          112009
+        ],
+        "pipeline_20_rerank3_ms": 5622.15
+      },
+      {
+        "qid": "201",
+        "question": "使用k粉不会出现的状况",
+        "relevant": [
+          151204,
+          364295,
+          364296
+        ],
+        "vector_top3": [
+          151204,
+          151204,
+          279
+        ],
+        "vector_top3_ms": 43.66,
+        "pipeline_20_rerank3": [
+          151204,
+          364296,
+          151204
+        ],
+        "pipeline_20_rerank3_ms": 4632.58
+      },
+      {
+        "qid": "4710",
+        "question": "sql显示表",
+        "relevant": [
+          261020,
+          356819,
+          359628
+        ],
+        "vector_top3": [
+          359628,
+          359628,
+          682844
+        ],
+        "vector_top3_ms": 48.48,
+        "pipeline_20_rerank3": [
+          261020,
+          359628,
+          261020
+        ],
+        "pipeline_20_rerank3_ms": 5806.59
+      },
+      {
+        "qid": "4313",
+        "question": "你会生病吗教案",
+        "relevant": [
+          6444,
+          103535,
+          154521,
+          210541,
+          210542
+        ],
+        "vector_top3": [
+          103535,
+          154521,
+          154521
+        ],
+        "vector_top3_ms": 1104.91,
+        "pipeline_20_rerank3": [
+          154521,
+          103535,
+          210542
+        ],
+        "pipeline_20_rerank3_ms": 23073.44
+      },
+      {
+        "qid": "24120",
+        "question": "四年级计算100道及答案",
+        "relevant": [
+          43533,
+          75787,
+          216296,
+          324680,
+          449599
+        ],
+        "vector_top3": [
+          449599,
+          449599,
+          449599
+        ],
+        "vector_top3_ms": 41.2,
+        "pipeline_20_rerank3": [
+          527188,
+          216296,
+          75787
+        ],
+        "pipeline_20_rerank3_ms": 3054.71
+      },
+      {
+        "qid": "22388",
+        "question": "查社保交了多少年怎么查",
+        "relevant": [
+          122151,
+          122152,
+          204169,
+          211665,
+          293959,
+          326133,
+          397178
+        ],
+        "vector_top3": [
+          293959,
+          326133,
+          204169
+        ],
+        "vector_top3_ms": 48.09,
+        "pipeline_20_rerank3": [
+          326133,
+          293959,
+          204169
+        ],
+        "pipeline_20_rerank3_ms": 2310.63
+      },
+      {
+        "qid": "15808",
+        "question": "海边女人演员名单",
+        "relevant": [
+          25987,
+          25988,
+          68752,
+          483184
+        ],
+        "vector_top3": [
+          483184,
+          68752,
+          380046
+        ],
+        "vector_top3_ms": 37.09,
+        "pipeline_20_rerank3": [
+          483184,
+          68752,
+          661846
+        ],
+        "pipeline_20_rerank3_ms": 2996.58
+      },
+      {
+        "qid": "12006",
+        "question": "扬州杨子妇科医院怎么样",
+        "relevant": [
+          140048,
+          189794,
+          361882,
+          453637,
+          475727
+        ],
+        "vector_top3": [
+          361882,
+          475727,
+          361882
+        ],
+        "vector_top3_ms": 35.45,
+        "pipeline_20_rerank3": [
+          189794,
+          140048,
+          189794
+        ],
+        "pipeline_20_rerank3_ms": 2370.19
+      },
+      {
+        "qid": "13841",
+        "question": "2020土地征收多少钱一亩",
+        "relevant": [
+          22373,
+          91256,
+          110753,
+          110754,
+          302897,
+          404976,
+          492592
+        ],
+        "vector_top3": [
+          91256,
+          492592,
+          302897
+        ],
+        "vector_top3_ms": 34.08,
+        "pipeline_20_rerank3": [
+          302897,
+          91256,
+          492592
+        ],
+        "pipeline_20_rerank3_ms": 2298.78
+      },
+      {
+        "qid": "2398",
+        "question": "虎牙直播怎么长时间录屏",
+        "relevant": [
+          3546,
+          3547,
+          53980,
+          137199,
+          226106,
+          482965
+        ],
+        "vector_top3": [
+          482965,
+          3547,
+          226106
+        ],
+        "vector_top3_ms": 29.54,
+        "pipeline_20_rerank3": [
+          482965,
+          3547,
+          226106
+        ],
+        "pipeline_20_rerank3_ms": 2450.6
+      },
+      {
+        "qid": "2911",
+        "question": "扁扁面繁体字怎么写",
+        "relevant": [
+          4303,
+          124249,
+          276284,
+          498111
+        ],
+        "vector_top3": [
+          326382,
+          4303,
+          4303
+        ],
+        "vector_top3_ms": 30.54,
+        "pipeline_20_rerank3": [
+          326382,
+          110320,
+          4303
+        ],
+        "pipeline_20_rerank3_ms": 3452.45
+      },
+      {
+        "qid": "15624",
+        "question": "梦想世界八阵图怎么获得",
+        "relevant": [
+          224385,
+          346095,
+          396751
+        ],
+        "vector_top3": [
+          396751,
+          224385,
+          346095
+        ],
+        "vector_top3_ms": 24.15,
+        "pipeline_20_rerank3": [
+          396751,
+          224385,
+          346095
+        ],
+        "pipeline_20_rerank3_ms": 2488.25
+      },
+      {
+        "qid": "10932",
+        "question": "药家鑫案件从不同角度分析",
+        "relevant": [
+          98425,
+          297129,
+          411788
+        ],
+        "vector_top3": [
+          297129,
+          297129,
+          525700
+        ],
+        "vector_top3_ms": 28.69,
+        "pipeline_20_rerank3": [
+          297129,
+          297129,
+          297129
+        ],
+        "pipeline_20_rerank3_ms": 2268.23
+      },
+      {
+        "qid": "22950",
+        "question": "苹果横着切会有什么不同",
+        "relevant": [
+          40728,
+          196451,
+          442914,
+          479621
+        ],
+        "vector_top3": [
+          442914,
+          442914,
+          196451
+        ],
+        "vector_top3_ms": 21.75,
+        "pipeline_20_rerank3": [
+          196451,
+          40728,
+          479621
+        ],
+        "pipeline_20_rerank3_ms": 3917.69
+      },
+      {
+        "qid": "722",
+        "question": "解放海南岛谁领导的",
+        "relevant": [
+          1051,
+          51833,
+          51835,
+          278900,
+          404228,
+          404230,
+          453608,
+          453609
+        ],
+        "vector_top3": [
+          404230,
+          51833,
+          51833
+        ],
+        "vector_top3_ms": 35.57,
+        "pipeline_20_rerank3": [
+          404230,
+          453608,
+          1051
+        ],
+        "pipeline_20_rerank3_ms": 2576.95
+      },
+      {
+        "qid": "4027",
+        "question": "阴道分泌物中过氧化氢浓度阴性",
+        "relevant": [
+          35192,
+          267765,
+          438950
+        ],
+        "vector_top3": [
+          35192,
+          438950,
+          267765
+        ],
+        "vector_top3_ms": 38.77,
+        "pipeline_20_rerank3": [
+          35192,
+          438950,
+          267765
+        ],
+        "pipeline_20_rerank3_ms": 2575.23
+      },
+      {
+        "qid": "4456",
+        "question": "玄彬和孙艺珍同居了吗",
+        "relevant": [
+          6677,
+          139789,
+          311508,
+          395108
+        ],
+        "vector_top3": [
+          311508,
+          395108,
+          311508
+        ],
+        "vector_top3_ms": 35.88,
+        "pipeline_20_rerank3": [
+          311508,
+          311508,
+          139789
+        ],
+        "pipeline_20_rerank3_ms": 2291.23
+      },
+      {
+        "qid": "19846",
+        "question": "图中一共有多少个长方形",
+        "relevant": [
+          33938,
+          72050,
+          88784
+        ],
+        "vector_top3": [
+          33938,
+          88784,
+          763960
+        ],
+        "vector_top3_ms": 22.17,
+        "pipeline_20_rerank3": [
+          33938,
+          88784,
+          72050
+        ],
+        "pipeline_20_rerank3_ms": 3067.63
+      },
+      {
+        "qid": "4378",
+        "question": "不可复名的全称",
+        "relevant": [
+          442845,
+          458778,
+          458779
+        ],
+        "vector_top3": [
+          458778,
+          458778,
+          458779
+        ],
+        "vector_top3_ms": 39.02,
+        "pipeline_20_rerank3": [
+          458778,
+          458778,
+          458779
+        ],
+        "pipeline_20_rerank3_ms": 4199.8
+      },
+      {
+        "qid": "21249",
+        "question": "老是接到8位数的电话号码",
+        "relevant": [
+          72071,
+          122104,
+          267044,
+          284354
+        ],
+        "vector_top3": [
+          267044,
+          267044,
+          122104
+        ],
+        "vector_top3_ms": 35.49,
+        "pipeline_20_rerank3": [
+          122104,
+          122104,
+          267044
+        ],
+        "pipeline_20_rerank3_ms": 2306.57
+      },
+      {
+        "qid": "9925",
+        "question": "你看,这不好好的嘛是什么语气",
+        "relevant": [
+          61178,
+          224752,
+          283520
+        ],
+        "vector_top3": [
+          815134,
+          2187967,
+          283520
+        ],
+        "vector_top3_ms": 30.55,
+        "pipeline_20_rerank3": [
+          283520,
+          283520,
+          224752
+        ],
+        "pipeline_20_rerank3_ms": 2496.94
+      },
+      {
+        "qid": "22860",
+        "question": "脾胃虚弱能吃柴胡舒肝丸吗",
+        "relevant": [
+          40535,
+          161492,
+          161493,
+          211685,
+          268691,
+          410308,
+          461660
+        ],
+        "vector_top3": [
+          410308,
+          211685,
+          268691
+        ],
+        "vector_top3_ms": 31.53,
+        "pipeline_20_rerank3": [
+          410308,
+          211685,
+          161493
+        ],
+        "pipeline_20_rerank3_ms": 2794.95
+      },
+      {
+        "qid": "15137",
+        "question": "青少年晚上一直勃起",
+        "relevant": [
+          223482,
+          228562,
+          282069,
+          326172
+        ],
+        "vector_top3": [
+          1640188,
+          1640188,
+          228562
+        ],
+        "vector_top3_ms": 24.16,
+        "pipeline_20_rerank3": [
+          282069,
+          1640188,
+          1058471
+        ],
+        "pipeline_20_rerank3_ms": 2248.99
+      },
+      {
+        "qid": "5869",
+        "question": "经常移动的洗衣机",
+        "relevant": [
+          242668,
+          242672,
+          273448,
+          275920
+        ],
+        "vector_top3": [
+          273448,
+          8932,
+          242668
+        ],
+        "vector_top3_ms": 25.33,
+        "pipeline_20_rerank3": [
+          273448,
+          131527,
+          275920
+        ],
+        "pipeline_20_rerank3_ms": 3235.79
+      },
+      {
+        "qid": "18162",
+        "question": "特定电磁波治疗器烤时间长可以吗",
+        "relevant": [
+          30431,
+          166713,
+          198816,
+          249011,
+          371165,
+          382875
+        ],
+        "vector_top3": [
+          2135528,
+          382875,
+          249011
+        ],
+        "vector_top3_ms": 36.23,
+        "pipeline_20_rerank3": [
+          30431,
+          371165,
+          249011
+        ],
+        "pipeline_20_rerank3_ms": 2473.27
+      },
+      {
+        "qid": "9012",
+        "question": "资治通鉴哪个版本好",
+        "relevant": [
+          14031,
+          165497,
+          197439,
+          397359
+        ],
+        "vector_top3": [
+          14031,
+          197439,
+          397359
+        ],
+        "vector_top3_ms": 38.86,
+        "pipeline_20_rerank3": [
+          397359,
+          165497,
+          165497
+        ],
+        "pipeline_20_rerank3_ms": 2618.78
+      },
+      {
+        "qid": "1791",
+        "question": "儿童客房洗漱用品的作用",
+        "relevant": [
+          119277,
+          367686,
+          405764
+        ],
+        "vector_top3": [
+          367686,
+          405764,
+          119277
+        ],
+        "vector_top3_ms": 27.8,
+        "pipeline_20_rerank3": [
+          367686,
+          367686,
+          119277
+        ],
+        "pipeline_20_rerank3_ms": 2995.54
+      },
+      {
+        "qid": "412",
+        "question": "脸被雨水淋到有影响吗",
+        "relevant": [
+          155752,
+          262619,
+          412246
+        ],
+        "vector_top3": [
+          262619,
+          412246,
+          155752
+        ],
+        "vector_top3_ms": 36.43,
+        "pipeline_20_rerank3": [
+          262619,
+          155752,
+          155752
+        ],
+        "pipeline_20_rerank3_ms": 2205.19
+      },
+      {
+        "qid": "22897",
+        "question": "能嫁给公公吗",
+        "relevant": [
+          40611,
+          211771,
+          244347
+        ],
+        "vector_top3": [
+          244347,
+          40611,
+          40611
+        ],
+        "vector_top3_ms": 28.77,
+        "pipeline_20_rerank3": [
+          40611,
+          40611,
+          40611
+        ],
+        "pipeline_20_rerank3_ms": 2215.84
+      },
+      {
+        "qid": "12957",
+        "question": "终结者里面的摩托车叫什么",
+        "relevant": [
+          248657,
+          350977,
+          389670
+        ],
+        "vector_top3": [
+          350977,
+          248657,
+          389670
+        ],
+        "vector_top3_ms": 29.67,
+        "pipeline_20_rerank3": [
+          350977,
+          248657,
+          389670
+        ],
+        "pipeline_20_rerank3_ms": 2975.47
+      },
+      {
+        "qid": "12265",
+        "question": "口交会造成感染吗",
+        "relevant": [
+          19492,
+          32394,
+          199149
+        ],
+        "vector_top3": [
+          32394,
+          199149,
+          199149
+        ],
+        "vector_top3_ms": 37.85,
+        "pipeline_20_rerank3": [
+          32394,
+          199149,
+          32394
+        ],
+        "pipeline_20_rerank3_ms": 2174.5
+      },
+      {
+        "qid": "13704",
+        "question": "怎么玩自己的身体",
+        "relevant": [
+          22130,
+          72304,
+          187007
+        ],
+        "vector_top3": [
+          72304,
+          187007,
+          22130
+        ],
+        "vector_top3_ms": 31.91,
+        "pipeline_20_rerank3": [
+          72304,
+          187007,
+          187007
+        ],
+        "pipeline_20_rerank3_ms": 2318.75
+      },
+      {
+        "qid": "18441",
+        "question": "森迪蔻是什么牌子",
+        "relevant": [
+          170051,
+          305588,
+          322949
+        ],
+        "vector_top3": [
+          170051,
+          170051,
+          170051
+        ],
+        "vector_top3_ms": 26.01,
+        "pipeline_20_rerank3": [
+          170051,
+          170051,
+          305588
+        ],
+        "pipeline_20_rerank3_ms": 2843.81
+      },
+      {
+        "qid": "20134",
+        "question": "小角度的痛点为什么会变换位置",
+        "relevant": [
+          133162,
+          149834,
+          271312
+        ],
+        "vector_top3": [
+          133162,
+          271312,
+          613914
+        ],
+        "vector_top3_ms": 27.89,
+        "pipeline_20_rerank3": [
+          459385,
+          63741,
+          133162
+        ],
+        "pipeline_20_rerank3_ms": 2643.28
+      },
+      {
+        "qid": "19996",
+        "question": "蛇行实验的目地实验f方法",
+        "relevant": [
+          205362,
+          205363,
+          331606
+        ],
+        "vector_top3": [
+          205363,
+          216139,
+          205362
+        ],
+        "vector_top3_ms": 31.66,
+        "pipeline_20_rerank3": [
+          205362,
+          331606,
+          205362
+        ],
+        "pipeline_20_rerank3_ms": 2724.16
+      },
+      {
+        "qid": "15598",
+        "question": "文学造诣高怎么形容",
+        "relevant": [
+          25571,
+          110135,
+          197453
+        ],
+        "vector_top3": [
+          110135,
+          25571,
+          197453
+        ],
+        "vector_top3_ms": 28.33,
+        "pipeline_20_rerank3": [
+          110135,
+          197453,
+          103626
+        ],
+        "pipeline_20_rerank3_ms": 2421.85
+      },
+      {
+        "qid": "18231",
+        "question": "江城医院是正规医院吗",
+        "relevant": [
+          264829,
+          315620,
+          404623
+        ],
+        "vector_top3": [
+          264829,
+          264829,
+          404623
+        ],
+        "vector_top3_ms": 28.03,
+        "pipeline_20_rerank3": [
+          404623,
+          315620,
+          264829
+        ],
+        "pipeline_20_rerank3_ms": 2325.58
+      },
+      {
+        "qid": "5602",
+        "question": "法律援助案件办理程序规定",
+        "relevant": [
+          8492,
+          54797,
+          246610,
+          419034,
+          486398
+        ],
+        "vector_top3": [
+          246610,
+          54797,
+          8492
+        ],
+        "vector_top3_ms": 25.74,
+        "pipeline_20_rerank3": [
+          486398,
+          8492,
+          486398
+        ],
+        "pipeline_20_rerank3_ms": 1990.53
+      },
+      {
+        "qid": "17896",
+        "question": "仙骨有啥用",
+        "relevant": [
+          29945,
+          162799,
+          177531,
+          217977,
+          284298,
+          328105,
+          479731
+        ],
+        "vector_top3": [
+          29945,
+          177531,
+          328105
+        ],
+        "vector_top3_ms": 25.62,
+        "pipeline_20_rerank3": [
+          479731,
+          29945,
+          162799
+        ],
+        "pipeline_20_rerank3_ms": 2291.01
+      },
+      {
+        "qid": "20944",
+        "question": "戴尔奥莱g3多少钱",
+        "relevant": [
+          195407,
+          368516,
+          426701
+        ],
+        "vector_top3": [
+          426701,
+          195407,
+          36319
+        ],
+        "vector_top3_ms": 20.77,
+        "pipeline_20_rerank3": [
+          195407,
+          36319,
+          368516
+        ],
+        "pipeline_20_rerank3_ms": 3781.16
+      },
+      {
+        "qid": "8483",
+        "question": "身份证43062是哪里的",
+        "relevant": [
+          96488,
+          99664,
+          169308
+        ],
+        "vector_top3": [
+          1255975,
+          1255975,
+          1255975
+        ],
+        "vector_top3_ms": 31.95,
+        "pipeline_20_rerank3": [
+          300306,
+          1823426,
+          2267232
+        ],
+        "pipeline_20_rerank3_ms": 2137.71
+      },
+      {
+        "qid": "21080",
+        "question": "门口贴大字报犯法吗",
+        "relevant": [
+          63583,
+          207609,
+          357286
+        ],
+        "vector_top3": [
+          207609,
+          207609,
+          2131602
+        ],
+        "vector_top3_ms": 22.03,
+        "pipeline_20_rerank3": [
+          63583,
+          207609,
+          207609
+        ],
+        "pipeline_20_rerank3_ms": 2720.99
+      },
+      {
+        "qid": "17117",
+        "question": "美短和布偶串串长什么样",
+        "relevant": [
+          105570,
+          336038,
+          342768
+        ],
+        "vector_top3": [
+          336038,
+          105570,
+          342768
+        ],
+        "vector_top3_ms": 32.92,
+        "pipeline_20_rerank3": [
+          336038,
+          105570,
+          1185275
+        ],
+        "pipeline_20_rerank3_ms": 3686.32
+      },
+      {
+        "qid": "5177",
+        "question": "思念是一种病是什么意思",
+        "relevant": [
+          32897,
+          153865,
+          251332,
+          442234
+        ],
+        "vector_top3": [
+          32897,
+          32897,
+          251332
+        ],
+        "vector_top3_ms": 24.31,
+        "pipeline_20_rerank3": [
+          32897,
+          32897,
+          7801
+        ],
+        "pipeline_20_rerank3_ms": 2295.53
+      },
+      {
+        "qid": "17175",
+        "question": "数据库用户分为三类",
+        "relevant": [
+          28560,
+          78971,
+          108078,
+          128143,
+          143431,
+          279443,
+          279446,
+          395117
+        ],
+        "vector_top3": [
+          395117,
+          108078,
+          78971
+        ],
+        "vector_top3_ms": 28.69,
+        "pipeline_20_rerank3": [
+          78971,
+          108078,
+          58767
+        ],
+        "pipeline_20_rerank3_ms": 2101.96
+      },
+      {
+        "qid": "9510",
+        "question": "种花养鱼的诗",
+        "relevant": [
+          112683,
+          221170,
+          350377,
+          413885,
+          474815
+        ],
+        "vector_top3": [
+          221170,
+          112683,
+          458410
+        ],
+        "vector_top3_ms": 32.44,
+        "pipeline_20_rerank3": [
+          112683,
+          458410,
+          221170
+        ],
+        "pipeline_20_rerank3_ms": 2670.71
+      },
+      {
+        "qid": "21705",
+        "question": "真的不忍心告诉你这个世界只是一个梦",
+        "relevant": [
+          145981,
+          301767,
+          496932
+        ],
+        "vector_top3": [
+          301767,
+          301767,
+          496932
+        ],
+        "vector_top3_ms": 47.95,
+        "pipeline_20_rerank3": [
+          145981,
+          301767,
+          301767
+        ],
+        "pipeline_20_rerank3_ms": 2348.66
+      },
+      {
+        "qid": "4514",
+        "question": "小森生活抗炎是制作什么吃",
+        "relevant": [
+          196311,
+          374378,
+          459498
+        ],
+        "vector_top3": [
+          459498,
+          374378,
+          196311
+        ],
+        "vector_top3_ms": 25.3,
+        "pipeline_20_rerank3": [
+          374378,
+          459498,
+          196311
+        ],
+        "pipeline_20_rerank3_ms": 2431.05
+      },
+      {
+        "qid": "9244",
+        "question": "专升本英语难易程度与什么相等",
+        "relevant": [
+          207872,
+          248465,
+          289363
+        ],
+        "vector_top3": [
+          289363,
+          248465,
+          207872
+        ],
+        "vector_top3_ms": 23.43,
+        "pipeline_20_rerank3": [
+          289363,
+          207872,
+          248465
+        ],
+        "pipeline_20_rerank3_ms": 2262.08
+      },
+      {
+        "qid": "20353",
+        "question": "塔罗牌测未来老公的学历",
+        "relevant": [
+          155881,
+          423151,
+          460922
+        ],
+        "vector_top3": [
+          423151,
+          155881,
+          460922
+        ],
+        "vector_top3_ms": 22.47,
+        "pipeline_20_rerank3": [
+          423151,
+          460922,
+          155881
+        ],
+        "pipeline_20_rerank3_ms": 2461.96
+      },
+      {
+        "qid": "22706",
+        "question": "趣味阅读幸福成长古诗",
+        "relevant": [
+          90523,
+          239783,
+          449219
+        ],
+        "vector_top3": [
+          458410,
+          449219,
+          239783
+        ],
+        "vector_top3_ms": 29.52,
+        "pipeline_20_rerank3": [
+          613266,
+          449219,
+          134840
+        ],
+        "pipeline_20_rerank3_ms": 2507.79
+      },
+      {
+        "qid": "16277",
+        "question": "给一年级的小盆友讲故事要滴注意什么",
+        "relevant": [
+          26880,
+          26881,
+          47863,
+          197379
+        ],
+        "vector_top3": [
+          197379,
+          26881,
+          47863
+        ],
+        "vector_top3_ms": 24.33,
+        "pipeline_20_rerank3": [
+          26881,
+          197379,
+          210541
+        ],
+        "pipeline_20_rerank3_ms": 2076.42
+      },
+      {
+        "qid": "21492",
+        "question": "什么是核心战斗力",
+        "relevant": [
+          55341,
+          87631,
+          125744
+        ],
+        "vector_top3": [
+          87631,
+          87631,
+          55341
+        ],
+        "vector_top3_ms": 22.18,
+        "pipeline_20_rerank3": [
+          87631,
+          87631,
+          125744
+        ],
+        "pipeline_20_rerank3_ms": 2106.16
+      },
+      {
+        "qid": "7857",
+        "question": "电视总是显示爱投屏",
+        "relevant": [
+          12140,
+          189719,
+          204342
+        ],
+        "vector_top3": [
+          189719,
+          239766,
+          221337
+        ],
+        "vector_top3_ms": 20.74,
+        "pipeline_20_rerank3": [
+          239766,
+          204342,
+          239766
+        ],
+        "pipeline_20_rerank3_ms": 2345.82
+      },
+      {
+        "qid": "10498",
+        "question": "整肠生有味道",
+        "relevant": [
+          16484,
+          215276,
+          228507
+        ],
+        "vector_top3": [
+          228507,
+          768914,
+          16484
+        ],
+        "vector_top3_ms": 32.1,
+        "pipeline_20_rerank3": [
+          228507,
+          16484,
+          199565
+        ],
+        "pipeline_20_rerank3_ms": 2916.42
+      },
+      {
+        "qid": "19308",
+        "question": "高一上数学期末考试重点",
+        "relevant": [
+          62279,
+          197797,
+          197798,
+          370161
+        ],
+        "vector_top3": [
+          370161,
+          197797,
+          62279
+        ],
+        "vector_top3_ms": 21.0,
+        "pipeline_20_rerank3": [
+          370161,
+          62279,
+          2123757
+        ],
+        "pipeline_20_rerank3_ms": 2098.21
+      },
+      {
+        "qid": "14204",
+        "question": "奥迪a3和gla哪个值得买",
+        "relevant": [
+          214972,
+          214973,
+          336538
+        ],
+        "vector_top3": [
+          214972,
+          173815,
+          618649
+        ],
+        "vector_top3_ms": 26.56,
+        "pipeline_20_rerank3": [
+          214972,
+          336538,
+          214973
+        ],
+        "pipeline_20_rerank3_ms": 3129.09
+      },
+      {
+        "qid": "4057",
+        "question": "瑞者通打卡机怎么删除管理员指纹",
+        "relevant": [
+          6024,
+          197954,
+          199624,
+          231820,
+          231822,
+          408254
+        ],
+        "vector_top3": [
+          231820,
+          408254,
+          231820
+        ],
+        "vector_top3_ms": 26.32,
+        "pipeline_20_rerank3": [
+          199624,
+          231820,
+          231822
+        ],
+        "pipeline_20_rerank3_ms": 2360.47
+      },
+      {
+        "qid": "13182",
+        "question": "紧缩术60天同房的感觉",
+        "relevant": [
+          159587,
+          192371,
+          446906
+        ],
+        "vector_top3": [
+          192371,
+          159587,
+          430824
+        ],
+        "vector_top3_ms": 31.08,
+        "pipeline_20_rerank3": [
+          192371,
+          159587,
+          446906
+        ],
+        "pipeline_20_rerank3_ms": 2104.69
+      },
+      {
+        "qid": "11165",
+        "question": "留党察看的干部还能用吗",
+        "relevant": [
+          154195,
+          364868,
+          398820,
+          419539
+        ],
+        "vector_top3": [
+          419539,
+          154195,
+          398820
+        ],
+        "vector_top3_ms": 20.44,
+        "pipeline_20_rerank3": [
+          419539,
+          154200,
+          1654642
+        ],
+        "pipeline_20_rerank3_ms": 2078.97
+      },
+      {
+        "qid": "20096",
+        "question": "下雨天养殖池塘可以解毒吗",
+        "relevant": [
+          168182,
+          261344,
+          436735,
+          486299
+        ],
+        "vector_top3": [
+          168182,
+          436735,
+          261344
+        ],
+        "vector_top3_ms": 25.18,
+        "pipeline_20_rerank3": [
+          436735,
+          436735,
+          168182
+        ],
+        "pipeline_20_rerank3_ms": 2297.98
+      },
+      {
+        "qid": "16579",
+        "question": "迈腾方向盘锁止失效",
+        "relevant": [
+          426644,
+          450288,
+          484580
+        ],
+        "vector_top3": [
+          450288,
+          426644,
+          484580
+        ],
+        "vector_top3_ms": 31.11,
+        "pipeline_20_rerank3": [
+          426644,
+          450288,
+          484580
+        ],
+        "pipeline_20_rerank3_ms": 2160.94
+      },
+      {
+        "qid": "3469",
+        "question": "中国人寿保险的套路",
+        "relevant": [
+          5148,
+          224273,
+          279720,
+          279721,
+          307577
+        ],
+        "vector_top3": [
+          215709,
+          1735156,
+          215709
+        ],
+        "vector_top3_ms": 23.91,
+        "pipeline_20_rerank3": [
+          5148,
+          224273,
+          224273
+        ],
+        "pipeline_20_rerank3_ms": 2184.14
+      },
+      {
+        "qid": "14865",
+        "question": "小男孩简笔画怎么涂色",
+        "relevant": [
+          24199,
+          74478,
+          107325
+        ],
+        "vector_top3": [
+          24199,
+          74478,
+          74478
+        ],
+        "vector_top3_ms": 30.78,
+        "pipeline_20_rerank3": [
+          74478,
+          74478,
+          107325
+        ],
+        "pipeline_20_rerank3_ms": 2186.62
+      },
+      {
+        "qid": "4072",
+        "question": "聚众者是什么意思",
+        "relevant": [
+          6046,
+          106350,
+          277626
+        ],
+        "vector_top3": [
+          277626,
+          6046,
+          106350
+        ],
+        "vector_top3_ms": 25.97,
+        "pipeline_20_rerank3": [
+          277626,
+          106350,
+          6046
+        ],
+        "pipeline_20_rerank3_ms": 2250.82
+      },
+      {
+        "qid": "11795",
+        "question": "联通38元套餐介绍",
+        "relevant": [
+          18684,
+          23803,
+          380538,
+          475666
+        ],
+        "vector_top3": [
+          23803,
+          380538,
+          475666
+        ],
+        "vector_top3_ms": 27.04,
+        "pipeline_20_rerank3": [
+          380538,
+          1631924,
+          475666
+        ],
+        "pipeline_20_rerank3_ms": 2301.4
+      },
+      {
+        "qid": "7080",
+        "question": "英魂之刃钻石夺宝在哪",
+        "relevant": [
+          354830,
+          380301,
+          462220
+        ],
+        "vector_top3": [
+          380301,
+          462220,
+          462220
+        ],
+        "vector_top3_ms": 25.23,
+        "pipeline_20_rerank3": [
+          380301,
+          644204,
+          462220
+        ],
+        "pipeline_20_rerank3_ms": 2581.56
+      },
+      {
+        "qid": "9812",
+        "question": "半夜起来上厕所脚咒疼,走走就好了",
+        "relevant": [
+          15339,
+          48153,
+          251367,
+          301831,
+          399533,
+          448846,
+          481931
+        ],
+        "vector_top3": [
+          399533,
+          251367,
+          15339
+        ],
+        "vector_top3_ms": 24.96,
+        "pipeline_20_rerank3": [
+          399533,
+          251367,
+          448846
+        ],
+        "pipeline_20_rerank3_ms": 2164.68
+      },
+      {
+        "qid": "15321",
+        "question": "怎么表达朋友那边天气情况",
+        "relevant": [
+          25015,
+          68764,
+          240617,
+          470716
+        ],
+        "vector_top3": [
+          240617,
+          240617,
+          68764
+        ],
+        "vector_top3_ms": 35.68,
+        "pipeline_20_rerank3": [
+          240617,
+          68764,
+          240617
+        ],
+        "pipeline_20_rerank3_ms": 2489.72
+      },
+      {
+        "qid": "13225",
+        "question": "只有一套房觉得自己很穷",
+        "relevant": [
+          234068,
+          234069,
+          317280,
+          438387
+        ],
+        "vector_top3": [
+          327015,
+          438387,
+          1023528
+        ],
+        "vector_top3_ms": 26.89,
+        "pipeline_20_rerank3": [
+          317280,
+          327015,
+          1064059
+        ],
+        "pipeline_20_rerank3_ms": 2334.86
+      },
+      {
+        "qid": "12466",
+        "question": "云南腌萝卜丝怎么做才好吃",
+        "relevant": [
+          19836,
+          79888,
+          196699,
+          223805,
+          274474,
+          473312,
+          478416
+        ],
+        "vector_top3": [
+          196699,
+          19836,
+          473312
+        ],
+        "vector_top3_ms": 29.25,
+        "pipeline_20_rerank3": [
+          196699,
+          473312,
+          274474
+        ],
+        "pipeline_20_rerank3_ms": 2419.03
+      },
+      {
+        "qid": "15765",
+        "question": "祖海唱为了谁",
+        "relevant": [
+          127801,
+          288484,
+          317867
+        ],
+        "vector_top3": [
+          288484,
+          127801,
+          317867
+        ],
+        "vector_top3_ms": 31.92,
+        "pipeline_20_rerank3": [
+          288484,
+          127801,
+          317867
+        ],
+        "pipeline_20_rerank3_ms": 2678.66
+      },
+      {
+        "qid": "21429",
+        "question": "是茶饭吗",
+        "relevant": [
+          199564,
+          236457,
+          314425
+        ],
+        "vector_top3": [
+          236457,
+          314425,
+          757211
+        ],
+        "vector_top3_ms": 25.96,
+        "pipeline_20_rerank3": [
+          236457,
+          314425,
+          1639752
+        ],
+        "pipeline_20_rerank3_ms": 2281.26
+      },
+      {
+        "qid": "23472",
+        "question": "健康成长进步的顺序",
+        "relevant": [
+          41964,
+          367916,
+          493779
+        ],
+        "vector_top3": [
+          493779,
+          41964,
+          367916
+        ],
+        "vector_top3_ms": 28.79,
+        "pipeline_20_rerank3": [
+          749801,
+          367916,
+          493779
+        ],
+        "pipeline_20_rerank3_ms": 2252.58
+      },
+      {
+        "qid": "7358",
+        "question": "解酒药能解除体内酒精吗",
+        "relevant": [
+          11345,
+          95323,
+          101384,
+          495333,
+          495334
+        ],
+        "vector_top3": [
+          495334,
+          95323,
+          11345
+        ],
+        "vector_top3_ms": 36.35,
+        "pipeline_20_rerank3": [
+          95323,
+          495334,
+          101384
+        ],
+        "pipeline_20_rerank3_ms": 2367.69
+      },
+      {
+        "qid": "9091",
+        "question": "爱你是哪的烟",
+        "relevant": [
+          14174,
+          125348,
+          418383,
+          495280
+        ],
+        "vector_top3": [
+          418383,
+          14174,
+          495280
+        ],
+        "vector_top3_ms": 21.65,
+        "pipeline_20_rerank3": [
+          125348,
+          14174,
+          418383
+        ],
+        "pipeline_20_rerank3_ms": 2756.82
+      },
+      {
+        "qid": "8053",
+        "question": "吴瑞淞怎么了",
+        "relevant": [
+          12451,
+          12452,
+          113368,
+          376550
+        ],
+        "vector_top3": [
+          12451,
+          113368,
+          113368
+        ],
+        "vector_top3_ms": 34.32,
+        "pipeline_20_rerank3": [
+          12451,
+          12452,
+          113368
+        ],
+        "pipeline_20_rerank3_ms": 2340.58
+      },
+      {
+        "qid": "12106",
+        "question": "二胡两个字是几声调",
+        "relevant": [
+          19230,
+          23521,
+          427025
+        ],
+        "vector_top3": [
+          23521,
+          427025,
+          744714
+        ],
+        "vector_top3_ms": 24.16,
+        "pipeline_20_rerank3": [
+          23521,
+          427025,
+          744714
+        ],
+        "pipeline_20_rerank3_ms": 2695.63
+      },
+      {
+        "qid": "7210",
+        "question": "浆细胞可以参与",
+        "relevant": [
+          182390,
+          432354,
+          432358,
+          432564,
+          481909
+        ],
+        "vector_top3": [
+          432354,
+          432358,
+          182390
+        ],
+        "vector_top3_ms": 28.84,
+        "pipeline_20_rerank3": [
+          182390,
+          432354,
+          1262936
+        ],
+        "pipeline_20_rerank3_ms": 2764.21
+      },
+      {
+        "qid": "11112",
+        "question": "您访问的页面不存在",
+        "relevant": [
+          17548,
+          443902,
+          487132
+        ],
+        "vector_top3": [
+          443902,
+          111769,
+          207524
+        ],
+        "vector_top3_ms": 21.12,
+        "pipeline_20_rerank3": [
+          443902,
+          1632127,
+          207524
+        ],
+        "pipeline_20_rerank3_ms": 2500.25
+      },
+      {
+        "qid": "21759",
+        "question": "梧州学院系统是什么",
+        "relevant": [
+          218093,
+          218097,
+          319193
+        ],
+        "vector_top3": [
+          218093,
+          218097,
+          319197
+        ],
+        "vector_top3_ms": 30.37,
+        "pipeline_20_rerank3": [
+          218093,
+          218097,
+          319197
+        ],
+        "pipeline_20_rerank3_ms": 2410.41
+      },
+      {
+        "qid": "3566",
+        "question": "尚文堂酒多少钱一瓶",
+        "relevant": [
+          10532,
+          110666,
+          197308
+        ],
+        "vector_top3": [
+          10532,
+          197308,
+          10532
+        ],
+        "vector_top3_ms": 21.62,
+        "pipeline_20_rerank3": [
+          110666,
+          438881,
+          197308
+        ],
+        "pipeline_20_rerank3_ms": 3177.22
+      },
+      {
+        "qid": "17565",
+        "question": "泰迪,蹲下可是没有拉尿",
+        "relevant": [
+          208880,
+          209374,
+          349063,
+          439163
+        ],
+        "vector_top3": [
+          349063,
+          209374,
+          439163
+        ],
+        "vector_top3_ms": 33.84,
+        "pipeline_20_rerank3": [
+          209374,
+          349063,
+          364296
+        ],
+        "pipeline_20_rerank3_ms": 2369.9
+      },
+      {
+        "qid": "5342",
+        "question": "洋务运动指导思想和口号",
+        "relevant": [
+          8063,
+          60063,
+          90625,
+          282577
+        ],
+        "vector_top3": [
+          60063,
+          8063,
+          282577
+        ],
+        "vector_top3_ms": 25.63,
+        "pipeline_20_rerank3": [
+          60063,
+          282577,
+          8063
+        ],
+        "pipeline_20_rerank3_ms": 2407.85
+      },
+      {
+        "qid": "24105",
+        "question": "双汇发展合理市盈率是多少",
+        "relevant": [
+          152337,
+          297891,
+          433653
+        ],
+        "vector_top3": [
+          152337,
+          650976,
+          297891
+        ],
+        "vector_top3_ms": 30.1,
+        "pipeline_20_rerank3": [
+          152337,
+          369747,
+          152337
+        ],
+        "pipeline_20_rerank3_ms": 2448.66
+      },
+      {
+        "qid": "1954",
+        "question": "牙疼和后背痛是心脏问题",
+        "relevant": [
+          3919,
+          112103,
+          144064,
+          194880,
+          324890,
+          367154
+        ],
+        "vector_top3": [
+          324890,
+          112103,
+          3919
+        ],
+        "vector_top3_ms": 24.26,
+        "pipeline_20_rerank3": [
+          112103,
+          367154,
+          3919
+        ],
+        "pipeline_20_rerank3_ms": 2189.49
+      },
+      {
+        "qid": "20366",
+        "question": "关闭微信里的游戏关系会怎么样",
+        "relevant": [
+          35034,
+          150368,
+          387395,
+          400487
+        ],
+        "vector_top3": [
+          387395,
+          35034,
+          400487
+        ],
+        "vector_top3_ms": 25.87,
+        "pipeline_20_rerank3": [
+          387395,
+          35034,
+          387395
+        ],
+        "pipeline_20_rerank3_ms": 2149.91
+      },
+      {
+        "qid": "18256",
+        "question": "月圆之夜机械师最强流派",
+        "relevant": [
+          52575,
+          105149,
+          333694,
+          444164
+        ],
+        "vector_top3": [
+          105149,
+          333694,
+          52575
+        ],
+        "vector_top3_ms": 27.87,
+        "pipeline_20_rerank3": [
+          333694,
+          105149,
+          52575
+        ],
+        "pipeline_20_rerank3_ms": 3014.18
+      },
+      {
+        "qid": "23292",
+        "question": "钢水判断铝含量",
+        "relevant": [
+          41503,
+          216083,
+          496728
+        ],
+        "vector_top3": [
+          216083,
+          216083,
+          41503
+        ],
+        "vector_top3_ms": 24.04,
+        "pipeline_20_rerank3": [
+          216083,
+          216083,
+          216083
+        ],
+        "pipeline_20_rerank3_ms": 3516.1
+      },
+      {
+        "qid": "2831",
+        "question": "facebook的账号是什么",
+        "relevant": [
+          156097,
+          187397,
+          217542
+        ],
+        "vector_top3": [
+          47332,
+          217542,
+          316132
+        ],
+        "vector_top3_ms": 24.4,
+        "pipeline_20_rerank3": [
+          47332,
+          316132,
+          316132
+        ],
+        "pipeline_20_rerank3_ms": 2472.44
+      },
+      {
+        "qid": "21816",
+        "question": "化作春泥更护花是谁写的",
+        "relevant": [
+          38149,
+          68425,
+          209271,
+          338644,
+          402305,
+          463079
+        ],
+        "vector_top3": [
+          38149,
+          660332,
+          38149
+        ],
+        "vector_top3_ms": 34.79,
+        "pipeline_20_rerank3": [
+          402305,
+          463079,
+          338644
+        ],
+        "pipeline_20_rerank3_ms": 2798.57
+      },
+      {
+        "qid": "741",
+        "question": "埃及之战怎么刷个人积分",
+        "relevant": [
+          1077,
+          293872,
+          293873,
+          332010,
+          458722
+        ],
+        "vector_top3": [
+          293872,
+          458722,
+          293872
+        ],
+        "vector_top3_ms": 20.6,
+        "pipeline_20_rerank3": [
+          458722,
+          1077,
+          293872
+        ],
+        "pipeline_20_rerank3_ms": 2255.08
+      },
+      {
+        "qid": "2019",
+        "question": "望京医院核酸检测多久出结果",
+        "relevant": [
+          2963,
+          73691,
+          156113,
+          194573,
+          481682
+        ],
+        "vector_top3": [
+          194573,
+          73691,
+          481682
+        ],
+        "vector_top3_ms": 29.35,
+        "pipeline_20_rerank3": [
+          358867,
+          2963,
+          1902066
+        ],
+        "pipeline_20_rerank3_ms": 2440.77
+      },
+      {
+        "qid": "15635",
+        "question": "痒净可以洗衣服吗",
+        "relevant": [
+          52678,
+          102962,
+          219751,
+          306248
+        ],
+        "vector_top3": [
+          306248,
+          1075714,
+          219751
+        ],
+        "vector_top3_ms": 21.18,
+        "pipeline_20_rerank3": [
+          1075714,
+          219751,
+          219751
+        ],
+        "pipeline_20_rerank3_ms": 2142.81
+      },
+      {
+        "qid": "8246",
+        "question": "csgo怎么改自己国籍",
+        "relevant": [
+          12784,
+          179625,
+          204698
+        ],
+        "vector_top3": [
+          799009,
+          12784,
+          179625
+        ],
+        "vector_top3_ms": 47.5,
+        "pipeline_20_rerank3": [
+          799009,
+          12784,
+          179625
+        ],
+        "pipeline_20_rerank3_ms": 2476.65
+      },
+      {
+        "qid": "20597",
+        "question": "车时速100以上水温高",
+        "relevant": [
+          78985,
+          163724,
+          173594,
+          315922,
+          315923,
+          487056
+        ],
+        "vector_top3": [
+          163724,
+          78985,
+          487056
+        ],
+        "vector_top3_ms": 24.33,
+        "pipeline_20_rerank3": [
+          315923,
+          315922,
+          173594
+        ],
+        "pipeline_20_rerank3_ms": 2697.93
+      },
+      {
+        "qid": "10839",
+        "question": "56寸电视一小时用多少电",
+        "relevant": [
+          234329,
+          327968,
+          397106
+        ],
+        "vector_top3": [
+          397106,
+          234329,
+          327968
+        ],
+        "vector_top3_ms": 23.42,
+        "pipeline_20_rerank3": [
+          327968,
+          234329,
+          397106
+        ],
+        "pipeline_20_rerank3_ms": 2750.13
+      },
+      {
+        "qid": "20120",
+        "question": "cpu多线程有什么用",
+        "relevant": [
+          34526,
+          185208,
+          185209,
+          385608,
+          385609
+        ],
+        "vector_top3": [
+          34526,
+          185209,
+          385608
+        ],
+        "vector_top3_ms": 31.57,
+        "pipeline_20_rerank3": [
+          185209,
+          34526,
+          185208
+        ],
+        "pipeline_20_rerank3_ms": 2264.22
+      },
+      {
+        "qid": "9856",
+        "question": "要看网地址去哪里找",
+        "relevant": [
+          111769,
+          207524,
+          369606
+        ],
+        "vector_top3": [
+          111769,
+          207524,
+          111769
+        ],
+        "vector_top3_ms": 35.37,
+        "pipeline_20_rerank3": [
+          111769,
+          207524,
+          1073548
+        ],
+        "pipeline_20_rerank3_ms": 2235.74
+      },
+      {
+        "qid": "6537",
+        "question": "广西卫生职业技术学院是几本",
+        "relevant": [
+          301974,
+          415468,
+          415469,
+          488887
+        ],
+        "vector_top3": [
+          415469,
+          488887,
+          415468
+        ],
+        "vector_top3_ms": 29.62,
+        "pipeline_20_rerank3": [
+          415469,
+          488887,
+          415469
+        ],
+        "pipeline_20_rerank3_ms": 2457.96
+      },
+      {
+        "qid": "10973",
+        "question": "率土之滨如何找回角色",
+        "relevant": [
+          106486,
+          259453,
+          465580
+        ],
+        "vector_top3": [
+          259453,
+          106486,
+          259453
+        ],
+        "vector_top3_ms": 24.29,
+        "pipeline_20_rerank3": [
+          106486,
+          259453,
+          259453
+        ],
+        "pipeline_20_rerank3_ms": 2393.96
+      },
+      {
+        "qid": "21271",
+        "question": "雷公菌怎么做好吃",
+        "relevant": [
+          36967,
+          94017,
+          126488,
+          265193,
+          265194,
+          318839
+        ],
+        "vector_top3": [
+          265193,
+          126488,
+          126488
+        ],
+        "vector_top3_ms": 23.25,
+        "pipeline_20_rerank3": [
+          521496,
+          265193,
+          265193
+        ],
+        "pipeline_20_rerank3_ms": 2457.3
+      },
+      {
+        "qid": "10781",
+        "question": "安神补脑液多少钱一盒",
+        "relevant": [
+          16965,
+          46664,
+          349384,
+          370408,
+          494781
+        ],
+        "vector_top3": [
+          370408,
+          349384,
+          494781
+        ],
+        "vector_top3_ms": 24.78,
+        "pipeline_20_rerank3": [
+          370408,
+          349384,
+          494781
+        ],
+        "pipeline_20_rerank3_ms": 2389.01
+      },
+      {
+        "qid": "7822",
+        "question": "电容指纹拆解",
+        "relevant": [
+          12095,
+          87004,
+          266582
+        ],
+        "vector_top3": [
+          266582,
+          266582,
+          12095
+        ],
+        "vector_top3_ms": 24.74,
+        "pipeline_20_rerank3": [
+          266582,
+          266582,
+          12095
+        ],
+        "pipeline_20_rerank3_ms": 2402.98
+      },
+      {
+        "qid": "14395",
+        "question": "糯米粉100克有几勺",
+        "relevant": [
+          222255,
+          272784,
+          388486
+        ],
+        "vector_top3": [
+          1551858,
+          388486,
+          1551858
+        ],
+        "vector_top3_ms": 33.12,
+        "pipeline_20_rerank3": [
+          388486,
+          1551858,
+          222255
+        ],
+        "pipeline_20_rerank3_ms": 2578.83
+      },
+      {
+        "qid": "18268",
+        "question": "蒙迪欧车内异响",
+        "relevant": [
+          144314,
+          207019,
+          433023
+        ],
+        "vector_top3": [
+          144314,
+          207019,
+          207019
+        ],
+        "vector_top3_ms": 23.01,
+        "pipeline_20_rerank3": [
+          144314,
+          207019,
+          207019
+        ],
+        "pipeline_20_rerank3_ms": 2493.53
+      },
+      {
+        "qid": "10618",
+        "question": "档案放自己手里10多年",
+        "relevant": [
+          234197,
+          240785,
+          245772,
+          303208,
+          336083,
+          485174
+        ],
+        "vector_top3": [
+          485174,
+          336083,
+          240785
+        ],
+        "vector_top3_ms": 20.49,
+        "pipeline_20_rerank3": [
+          240785,
+          485174,
+          336083
+        ],
+        "pipeline_20_rerank3_ms": 1901.12
+      },
+      {
+        "qid": "7564",
+        "question": "桂花雨选自什么书",
+        "relevant": [
+          11669,
+          128501,
+          359793,
+          447975,
+          447978
+        ],
+        "vector_top3": [
+          11669,
+          359793,
+          447975
+        ],
+        "vector_top3_ms": 26.16,
+        "pipeline_20_rerank3": [
+          11669,
+          359793,
+          359793
+        ],
+        "pipeline_20_rerank3_ms": 2266.71
+      },
+      {
+        "qid": "17057",
+        "question": "萃能蓝荷茶能治便秘吗",
+        "relevant": [
+          28352,
+          28353,
+          85623,
+          97065,
+          149379,
+          355966
+        ],
+        "vector_top3": [
+          28352,
+          355966,
+          149379
+        ],
+        "vector_top3_ms": 24.55,
+        "pipeline_20_rerank3": [
+          28352,
+          1527625,
+          85623
+        ],
+        "pipeline_20_rerank3_ms": 2237.45
+      },
+      {
+        "qid": "19450",
+        "question": "花木兰情人节限定皮肤多少钱",
+        "relevant": [
+          33118,
+          243217,
+          288165
+        ],
+        "vector_top3": [
+          243217,
+          288165,
+          243217
+        ],
+        "vector_top3_ms": 22.04,
+        "pipeline_20_rerank3": [
+          243217,
+          288165,
+          33118
+        ],
+        "pipeline_20_rerank3_ms": 2112.75
+      },
+      {
+        "qid": "18604",
+        "question": "解放战争基本胜利标志",
+        "relevant": [
+          47723,
+          51225,
+          415142,
+          449887
+        ],
+        "vector_top3": [
+          415142,
+          51225,
+          47723
+        ],
+        "vector_top3_ms": 29.27,
+        "pipeline_20_rerank3": [
+          415142,
+          47723,
+          51225
+        ],
+        "pipeline_20_rerank3_ms": 2230.22
+      },
+      {
+        "qid": "23422",
+        "question": "红细胞大小不等,变形,碎片",
+        "relevant": [
+          41840,
+          139311,
+          177580,
+          443471,
+          475820
+        ],
+        "vector_top3": [
+          177580,
+          139311,
+          41840
+        ],
+        "vector_top3_ms": 28.8,
+        "pipeline_20_rerank3": [
+          139311,
+          443471,
+          475820
+        ],
+        "pipeline_20_rerank3_ms": 2797.17
+      },
+      {
+        "qid": "13823",
+        "question": "少年三国志2体力丹买满吗",
+        "relevant": [
+          51156,
+          281618,
+          424838
+        ],
+        "vector_top3": [
+          424838,
+          323908,
+          51156
+        ],
+        "vector_top3_ms": 28.37,
+        "pipeline_20_rerank3": [
+          51156,
+          424838,
+          51156
+        ],
+        "pipeline_20_rerank3_ms": 3004.85
+      },
+      {
+        "qid": "11078",
+        "question": "煮泡面加菠菜",
+        "relevant": [
+          17494,
+          87487,
+          223964
+        ],
+        "vector_top3": [
+          223964,
+          87487,
+          818476
+        ],
+        "vector_top3_ms": 22.22,
+        "pipeline_20_rerank3": [
+          223964,
+          87487,
+          17494
+        ],
+        "pipeline_20_rerank3_ms": 2988.5
+      },
+      {
+        "qid": "23123",
+        "question": "笔记本4g独显",
+        "relevant": [
+          41144,
+          91472,
+          91473,
+          199406,
+          371747,
+          395216
+        ],
+        "vector_top3": [
+          91472,
+          371747,
+          41144
+        ],
+        "vector_top3_ms": 26.27,
+        "pipeline_20_rerank3": [
+          91472,
+          41144,
+          371747
+        ],
+        "pipeline_20_rerank3_ms": 2964.3
+      },
+      {
+        "qid": "4349",
+        "question": "智天股权最近什么情况",
+        "relevant": [
+          119686,
+          119687,
+          320047,
+          430266
+        ],
+        "vector_top3": [
+          320047,
+          430266,
+          320047
+        ],
+        "vector_top3_ms": 27.8,
+        "pipeline_20_rerank3": [
+          119686,
+          320047,
+          320047
+        ],
+        "pipeline_20_rerank3_ms": 2204.48
+      },
+      {
+        "qid": "21256",
+        "question": "南昌有没有治疗自闭症机构",
+        "relevant": [
+          36933,
+          382736,
+          438296
+        ],
+        "vector_top3": [
+          332364,
+          382736,
+          332364
+        ],
+        "vector_top3_ms": 28.52,
+        "pipeline_20_rerank3": [
+          332364,
+          382736,
+          332364
+        ],
+        "pipeline_20_rerank3_ms": 2021.96
+      },
+      {
+        "qid": "18108",
+        "question": "照片编辑器可以加刘海吗",
+        "relevant": [
+          206552,
+          226563,
+          398896
+        ],
+        "vector_top3": [
+          206552,
+          226563,
+          398896
+        ],
+        "vector_top3_ms": 23.84,
+        "pipeline_20_rerank3": [
+          398896,
+          206552,
+          226563
+        ],
+        "pipeline_20_rerank3_ms": 2298.33
+      },
+      {
+        "qid": "14066",
+        "question": "中海地产工作压力大吗",
+        "relevant": [
+          53166,
+          100752,
+          244849
+        ],
+        "vector_top3": [
+          100752,
+          53166,
+          244849
+        ],
+        "vector_top3_ms": 27.85,
+        "pipeline_20_rerank3": [
+          100752,
+          100752,
+          53166
+        ],
+        "pipeline_20_rerank3_ms": 2306.35
+      },
+      {
+        "qid": "18314",
+        "question": "猿辅导的图片怎么打印",
+        "relevant": [
+          30697,
+          81116,
+          223167,
+          349852,
+          492275
+        ],
+        "vector_top3": [
+          223167,
+          30697,
+          349852
+        ],
+        "vector_top3_ms": 32.06,
+        "pipeline_20_rerank3": [
+          223167,
+          492275,
+          30697
+        ],
+        "pipeline_20_rerank3_ms": 2293.29
+      },
+      {
+        "qid": "4062",
+        "question": "山东在中国排名第几位",
+        "relevant": [
+          6034,
+          110611,
+          260361,
+          314772,
+          382493
+        ],
+        "vector_top3": [
+          260361,
+          314772,
+          260361
+        ],
+        "vector_top3_ms": 27.23,
+        "pipeline_20_rerank3": [
+          314772,
+          260361,
+          110611
+        ],
+        "pipeline_20_rerank3_ms": 2336.12
+      },
+      {
+        "qid": "24297",
+        "question": "抗日战争75周年放假吗",
+        "relevant": [
+          47830,
+          165932,
+          373732
+        ],
+        "vector_top3": [
+          47830,
+          165932,
+          373732
+        ],
+        "vector_top3_ms": 30.77,
+        "pipeline_20_rerank3": [
+          373732,
+          47830,
+          165932
+        ],
+        "pipeline_20_rerank3_ms": 2243.08
+      },
+      {
+        "qid": "13173",
+        "question": "秦皇岛市榆关大集是哪天",
+        "relevant": [
+          71926,
+          213154,
+          296613
+        ],
+        "vector_top3": [
+          213154,
+          71926,
+          213154
+        ],
+        "vector_top3_ms": 31.18,
+        "pipeline_20_rerank3": [
+          213154,
+          213154,
+          71926
+        ],
+        "pipeline_20_rerank3_ms": 2995.24
+      },
+      {
+        "qid": "2174",
+        "question": "石材切割加工费",
+        "relevant": [
+          3196,
+          53618,
+          110169,
+          160288,
+          160289
+        ],
+        "vector_top3": [
+          160288,
+          3196,
+          160289
+        ],
+        "vector_top3_ms": 32.49,
+        "pipeline_20_rerank3": [
+          3196,
+          160288,
+          3196
+        ],
+        "pipeline_20_rerank3_ms": 3827.92
+      },
+      {
+        "qid": "14396",
+        "question": "习近平2018年新年贺词",
+        "relevant": [
+          23393,
+          49564,
+          94744,
+          99968,
+          220696,
+          296608,
+          446341
+        ],
+        "vector_top3": [
+          49564,
+          23393,
+          99968
+        ],
+        "vector_top3_ms": 22.98,
+        "pipeline_20_rerank3": [
+          220696,
+          23393,
+          99968
+        ],
+        "pipeline_20_rerank3_ms": 2463.43
+      },
+      {
+        "qid": "15893",
+        "question": "什么的大地填空",
+        "relevant": [
+          82073,
+          131818,
+          204038,
+          216438,
+          274365
+        ],
+        "vector_top3": [
+          204038,
+          131818,
+          216438
+        ],
+        "vector_top3_ms": 25.19,
+        "pipeline_20_rerank3": [
+          204038,
+          274365,
+          131818
+        ],
+        "pipeline_20_rerank3_ms": 2565.78
+      },
+      {
+        "qid": "19619",
+        "question": "麻雀是飞禽类吗",
+        "relevant": [
+          44225,
+          94533,
+          264480,
+          314700,
+          314701
+        ],
+        "vector_top3": [
+          314700,
+          44225,
+          314701
+        ],
+        "vector_top3_ms": 24.85,
+        "pipeline_20_rerank3": [
+          44225,
+          314700,
+          314701
+        ],
+        "pipeline_20_rerank3_ms": 2318.36
+      },
+      {
+        "qid": "23969",
+        "question": "战斧牛排 知乎",
+        "relevant": [
+          43177,
+          100176,
+          214294
+        ],
+        "vector_top3": [
+          100176,
+          214294,
+          43177
+        ],
+        "vector_top3_ms": 23.06,
+        "pipeline_20_rerank3": [
+          100176,
+          214294,
+          43177
+        ],
+        "pipeline_20_rerank3_ms": 2532.65
+      },
+      {
+        "qid": "21475",
+        "question": "怎拒绝推送的文章",
+        "relevant": [
+          49773,
+          162947,
+          239214,
+          241495
+        ],
+        "vector_top3": [
+          162947,
+          241495,
+          49773
+        ],
+        "vector_top3_ms": 23.7,
+        "pipeline_20_rerank3": [
+          162947,
+          241495,
+          239214
+        ],
+        "pipeline_20_rerank3_ms": 2054.17
+      },
+      {
+        "qid": "13400",
+        "question": "华为网页查找手里机",
+        "relevant": [
+          21538,
+          42308,
+          55436,
+          213673,
+          457029
+        ],
+        "vector_top3": [
+          213673,
+          55436,
+          21538
+        ],
+        "vector_top3_ms": 26.82,
+        "pipeline_20_rerank3": [
+          55436,
+          21538,
+          21538
+        ],
+        "pipeline_20_rerank3_ms": 2019.73
+      },
+      {
+        "qid": "20918",
+        "question": "龙血膏真的好用吗",
+        "relevant": [
+          36268,
+          36269,
+          77323,
+          198118,
+          331750
+        ],
+        "vector_top3": [
+          331750,
+          77323,
+          198118
+        ],
+        "vector_top3_ms": 22.58,
+        "pipeline_20_rerank3": [
+          36268,
+          331750,
+          198118
+        ],
+        "pipeline_20_rerank3_ms": 2409.23
+      },
+      {
+        "qid": "3693",
+        "question": "开头的成语",
+        "relevant": [
+          353253,
+          353256,
+          367422
+        ],
+        "vector_top3": [
+          353253,
+          169717,
+          367422
+        ],
+        "vector_top3_ms": 25.86,
+        "pipeline_20_rerank3": [
+          353253,
+          353253,
+          353253
+        ],
+        "pipeline_20_rerank3_ms": 2469.87
+      },
+      {
+        "qid": "1623",
+        "question": "描述几种抽象为图结构的数据或场景",
+        "relevant": [
+          2373,
+          149331,
+          149332,
+          149333,
+          176212,
+          226294
+        ],
+        "vector_top3": [
+          2373,
+          149331,
+          226294
+        ],
+        "vector_top3_ms": 26.62,
+        "pipeline_20_rerank3": [
+          149334,
+          2373,
+          2373
+        ],
+        "pipeline_20_rerank3_ms": 2514.17
+      },
+      {
+        "qid": "10505",
+        "question": "磷多对黄瓜的危害",
+        "relevant": [
+          41605,
+          355343,
+          411088
+        ],
+        "vector_top3": [
+          411088,
+          411088,
+          355343
+        ],
+        "vector_top3_ms": 28.4,
+        "pipeline_20_rerank3": [
+          411088,
+          411088,
+          355343
+        ],
+        "pipeline_20_rerank3_ms": 3485.6
+      },
+      {
+        "qid": "22311",
+        "question": "pos机会过期",
+        "relevant": [
+          39310,
+          89598,
+          255182
+        ],
+        "vector_top3": [
+          89598,
+          89598,
+          89598
+        ],
+        "vector_top3_ms": 25.82,
+        "pipeline_20_rerank3": [
+          89598,
+          89598,
+          89598
+        ],
+        "pipeline_20_rerank3_ms": 2117.64
+      },
+      {
+        "qid": "20296",
+        "question": "决明子菊花茶吃葡萄干",
+        "relevant": [
+          34872,
+          133299,
+          133300,
+          248336,
+          495485
+        ],
+        "vector_top3": [
+          133299,
+          34872,
+          34872
+        ],
+        "vector_top3_ms": 28.5,
+        "pipeline_20_rerank3": [
+          495485,
+          248336,
+          34872
+        ],
+        "pipeline_20_rerank3_ms": 2280.15
+      },
+      {
+        "qid": "22124",
+        "question": "希芸化妆品先用什么",
+        "relevant": [
+          116818,
+          159886,
+          159887,
+          237736,
+          397401
+        ],
+        "vector_top3": [
+          116818,
+          159887,
+          116818
+        ],
+        "vector_top3_ms": 35.13,
+        "pipeline_20_rerank3": [
+          159887,
+          159886,
+          159887
+        ],
+        "pipeline_20_rerank3_ms": 2299.57
+      },
+      {
+        "qid": "712",
+        "question": "重结晶时,如果被提纯物质中含有有色杂质该如何处理",
+        "relevant": [
+          45235,
+          45238,
+          443037,
+          443038
+        ],
+        "vector_top3": [
+          45238,
+          443038,
+          45238
+        ],
+        "vector_top3_ms": 50.38,
+        "pipeline_20_rerank3": [
+          45238,
+          45238,
+          443037
+        ],
+        "pipeline_20_rerank3_ms": 2576.19
+      },
+      {
+        "qid": "6165",
+        "question": "越南补肾黑色的豆子叫什么名字",
+        "relevant": [
+          72736,
+          201348,
+          239515,
+          265639,
+          290146,
+          411499
+        ],
+        "vector_top3": [
+          72736,
+          201348,
+          265639
+        ],
+        "vector_top3_ms": 25.47,
+        "pipeline_20_rerank3": [
+          265639,
+          290146,
+          72736
+        ],
+        "pipeline_20_rerank3_ms": 2837.06
+      },
+      {
+        "qid": "21852",
+        "question": "微信公众号纠错功能",
+        "relevant": [
+          38244,
+          124716,
+          325545,
+          481717
+        ],
+        "vector_top3": [
+          124716,
+          38244,
+          38244
+        ],
+        "vector_top3_ms": 27.22,
+        "pipeline_20_rerank3": [
+          124716,
+          481717,
+          38244
+        ],
+        "pipeline_20_rerank3_ms": 2146.86
+      },
+      {
+        "qid": "6137",
+        "question": "医疗设备用单片机还是plc",
+        "relevant": [
+          170150,
+          249317,
+          253132,
+          423868,
+          423871
+        ],
+        "vector_top3": [
+          170150,
+          170150,
+          249317
+        ],
+        "vector_top3_ms": 25.48,
+        "pipeline_20_rerank3": [
+          253132,
+          423868,
+          170150
+        ],
+        "pipeline_20_rerank3_ms": 2214.66
+      },
+      {
+        "qid": "13360",
+        "question": "无上神帝等级详细划分",
+        "relevant": [
+          21474,
+          192681,
+          385885
+        ],
+        "vector_top3": [
+          21474,
+          385885,
+          2388
+        ],
+        "vector_top3_ms": 23.65,
+        "pipeline_20_rerank3": [
+          21474,
+          385885,
+          192681
+        ],
+        "pipeline_20_rerank3_ms": 2900.16
+      },
+      {
+        "qid": "22404",
+        "question": "为什么扁平足可以过兵检",
+        "relevant": [
+          39512,
+          219543,
+          320676,
+          394300
+        ],
+        "vector_top3": [
+          39512,
+          39512,
+          1372702
+        ],
+        "vector_top3_ms": 23.09,
+        "pipeline_20_rerank3": [
+          219543,
+          320676,
+          39512
+        ],
+        "pipeline_20_rerank3_ms": 3098.85
+      },
+      {
+        "qid": "17752",
+        "question": "翻棋游戏规则",
+        "relevant": [
+          79994,
+          154139,
+          332803
+        ],
+        "vector_top3": [
+          154139,
+          79994,
+          79994
+        ],
+        "vector_top3_ms": 27.55,
+        "pipeline_20_rerank3": [
+          154139,
+          79994,
+          79994
+        ],
+        "pipeline_20_rerank3_ms": 2386.37
+      },
+      {
+        "qid": "16739",
+        "question": "公交车系统提示网络异常啥情况",
+        "relevant": [
+          148754,
+          490852,
+          490853
+        ],
+        "vector_top3": [
+          490852,
+          1124882,
+          1783534
+        ],
+        "vector_top3_ms": 25.29,
+        "pipeline_20_rerank3": [
+          490852,
+          1124882,
+          174226
+        ],
+        "pipeline_20_rerank3_ms": 2787.54
+      },
+      {
+        "qid": "8030",
+        "question": "双高计划院校比普通的专科院校有何区别",
+        "relevant": [
+          216932,
+          344871,
+          356541
+        ],
+        "vector_top3": [
+          356541,
+          356541,
+          356541
+        ],
+        "vector_top3_ms": 30.45,
+        "pipeline_20_rerank3": [
+          356541,
+          356541,
+          216932
+        ],
+        "pipeline_20_rerank3_ms": 2134.69
+      },
+      {
+        "qid": "6327",
+        "question": "衡昌烧坊为什么这么贵",
+        "relevant": [
+          149585,
+          413358,
+          438881,
+          438882
+        ],
+        "vector_top3": [
+          149585,
+          438882,
+          413358
+        ],
+        "vector_top3_ms": 21.68,
+        "pipeline_20_rerank3": [
+          149585,
+          438882,
+          438881
+        ],
+        "pipeline_20_rerank3_ms": 3098.37
+      },
+      {
+        "qid": "7424",
+        "question": "十堰市灵活就业社保交多少年",
+        "relevant": [
+          11450,
+          116532,
+          116533,
+          138659
+        ],
+        "vector_top3": [
+          116533,
+          11450,
+          138659
+        ],
+        "vector_top3_ms": 24.4,
+        "pipeline_20_rerank3": [
+          116533,
+          292214,
+          11450
+        ],
+        "pipeline_20_rerank3_ms": 2074.44
+      },
+      {
+        "qid": "3001",
+        "question": "年审发什么标志",
+        "relevant": [
+          4434,
+          72253,
+          247235,
+          285756,
+          336018,
+          473407,
+          477365,
+          477366
+        ],
+        "vector_top3": [
+          80625,
+          473407,
+          1861919
+        ],
+        "vector_top3_ms": 20.96,
+        "pipeline_20_rerank3": [
+          80625,
+          72253,
+          477365
+        ],
+        "pipeline_20_rerank3_ms": 2138.1
+      },
+      {
+        "qid": "21099",
+        "question": "肘外翻矫正训练方法",
+        "relevant": [
+          36638,
+          97003,
+          97249,
+          146723,
+          152663,
+          306385,
+          436373,
+          440028
+        ],
+        "vector_top3": [
+          306385,
+          436373,
+          97003
+        ],
+        "vector_top3_ms": 20.43,
+        "pipeline_20_rerank3": [
+          97003,
+          306385,
+          36638
+        ],
+        "pipeline_20_rerank3_ms": 2408.37
+      },
+      {
+        "qid": "2623",
+        "question": "外阴瘙痒阴唇有小疙瘩很痒",
+        "relevant": [
+          2947,
+          3906,
+          26406,
+          123627,
+          131425,
+          181592,
+          290217,
+          479031
+        ],
+        "vector_top3": [
+          3906,
+          3906,
+          290217
+        ],
+        "vector_top3_ms": 21.67,
+        "pipeline_20_rerank3": [
+          290217,
+          3906,
+          2947
+        ],
+        "pipeline_20_rerank3_ms": 2257.47
+      },
+      {
+        "qid": "3559",
+        "question": "电子投保文件上传失败",
+        "relevant": [
+          5292,
+          419749,
+          440354
+        ],
+        "vector_top3": [
+          419749,
+          55645,
+          440354
+        ],
+        "vector_top3_ms": 31.36,
+        "pipeline_20_rerank3": [
+          55645,
+          419749,
+          55645
+        ],
+        "pipeline_20_rerank3_ms": 2163.65
+      },
+      {
+        "qid": "19519",
+        "question": "红米手机重新设置文件打开方式",
+        "relevant": [
+          33300,
+          125657,
+          154190,
+          303892
+        ],
+        "vector_top3": [
+          303892,
+          33300,
+          125657
+        ],
+        "vector_top3_ms": 23.47,
+        "pipeline_20_rerank3": [
+          125657,
+          303892,
+          154190
+        ],
+        "pipeline_20_rerank3_ms": 2262.96
+      },
+      {
+        "qid": "152",
+        "question": "中国黄金买的手镯可以变现吗",
+        "relevant": [
+          219,
+          211338,
+          326594,
+          340178,
+          454484
+        ],
+        "vector_top3": [
+          326594,
+          219,
+          454484
+        ],
+        "vector_top3_ms": 26.66,
+        "pipeline_20_rerank3": [
+          454484,
+          219,
+          326594
+        ],
+        "pipeline_20_rerank3_ms": 2139.97
+      },
+      {
+        "qid": "23664",
+        "question": "小男孩伤心极了可他也没有什么办法改为反问句",
+        "relevant": [
+          103491,
+          207733,
+          474200
+        ],
+        "vector_top3": [
+          446170,
+          446170,
+          283520
+        ],
+        "vector_top3_ms": 38.33,
+        "pipeline_20_rerank3": [
+          1118464,
+          446170,
+          191506
+        ],
+        "pipeline_20_rerank3_ms": 2270.0
+      },
+      {
+        "qid": "2661",
+        "question": "行政诉讼法规定当事人6个月",
+        "relevant": [
+          113198,
+          194605,
+          196012,
+          207571,
+          244691,
+          482851
+        ],
+        "vector_top3": [
+          482851,
+          196012,
+          244691
+        ],
+        "vector_top3_ms": 27.58,
+        "pipeline_20_rerank3": [
+          482851,
+          196012,
+          113198
+        ],
+        "pipeline_20_rerank3_ms": 2102.11
+      },
+      {
+        "qid": "22976",
+        "question": "怎么判断消化道出血",
+        "relevant": [
+          72284,
+          214398,
+          243386,
+          294885,
+          435660,
+          468848
+        ],
+        "vector_top3": [
+          294885,
+          214398,
+          435660
+        ],
+        "vector_top3_ms": 25.64,
+        "pipeline_20_rerank3": [
+          435660,
+          294885,
+          243386
+        ],
+        "pipeline_20_rerank3_ms": 2209.12
+      },
+      {
+        "qid": "8373",
+        "question": "树上能留下指纹吗",
+        "relevant": [
+          12960,
+          63161,
+          148920,
+          320492
+        ],
+        "vector_top3": [
+          148920,
+          320492,
+          320492
+        ],
+        "vector_top3_ms": 25.13,
+        "pipeline_20_rerank3": [
+          320492,
+          320492,
+          320492
+        ],
+        "pipeline_20_rerank3_ms": 2582.84
+      },
+      {
+        "qid": "8411",
+        "question": "地主阶级与农民阶级的关系",
+        "relevant": [
+          189562,
+          416181,
+          470452
+        ],
+        "vector_top3": [
+          416181,
+          416181,
+          470452
+        ],
+        "vector_top3_ms": 25.04,
+        "pipeline_20_rerank3": [
+          470452,
+          416181,
+          189562
+        ],
+        "pipeline_20_rerank3_ms": 2329.88
+      },
+      {
+        "qid": "481",
+        "question": "用啫喱膏会导致脱发吗",
+        "relevant": [
+          11829,
+          70894,
+          127631,
+          177985,
+          304554,
+          313065,
+          363643
+        ],
+        "vector_top3": [
+          313065,
+          177985,
+          127631
+        ],
+        "vector_top3_ms": 29.58,
+        "pipeline_20_rerank3": [
+          177985,
+          304554,
+          313065
+        ],
+        "pipeline_20_rerank3_ms": 2247.9
+      },
+      {
+        "qid": "4529",
+        "question": "乌鲁木齐去哪体检身体",
+        "relevant": [
+          353056,
+          441741,
+          491380,
+          491381
+        ],
+        "vector_top3": [
+          353056,
+          441741,
+          491380
+        ],
+        "vector_top3_ms": 25.38,
+        "pipeline_20_rerank3": [
+          491381,
+          441741,
+          441741
+        ],
+        "pipeline_20_rerank3_ms": 2314.26
+      },
+      {
+        "qid": "10696",
+        "question": "过多的滥交对身体有啥伤害",
+        "relevant": [
+          16809,
+          16810,
+          30728,
+          452567,
+          486838
+        ],
+        "vector_top3": [
+          486838,
+          452567,
+          30728
+        ],
+        "vector_top3_ms": 21.78,
+        "pipeline_20_rerank3": [
+          30728,
+          452567,
+          16809
+        ],
+        "pipeline_20_rerank3_ms": 2182.0
+      },
+      {
+        "qid": "18300",
+        "question": "造价师自己估分能准吗",
+        "relevant": [
+          86028,
+          172688,
+          187699
+        ],
+        "vector_top3": [
+          86028,
+          172688,
+          172688
+        ],
+        "vector_top3_ms": 32.01,
+        "pipeline_20_rerank3": [
+          86028,
+          172688,
+          172688
+        ],
+        "pipeline_20_rerank3_ms": 2638.91
+      },
+      {
+        "qid": "5973",
+        "question": "门面安装门窗的位置算不算套内面积",
+        "relevant": [
+          135002,
+          173202,
+          173203,
+          239923,
+          344965,
+          366419
+        ],
+        "vector_top3": [
+          366419,
+          173203,
+          344965
+        ],
+        "vector_top3_ms": 34.84,
+        "pipeline_20_rerank3": [
+          344965,
+          173203,
+          344965
+        ],
+        "pipeline_20_rerank3_ms": 2329.7
+      },
+      {
+        "qid": "3970",
+        "question": "鬼迷心窍的原唱是谁啊",
+        "relevant": [
+          151873,
+          215365,
+          309895,
+          322705,
+          414825
+        ],
+        "vector_top3": [
+          414825,
+          322705,
+          794999
+        ],
+        "vector_top3_ms": 35.3,
+        "pipeline_20_rerank3": [
+          414825,
+          215365,
+          322705
+        ],
+        "pipeline_20_rerank3_ms": 2968.34
+      },
+      {
+        "qid": "12971",
+        "question": "惠州41小学动工了吗",
+        "relevant": [
+          134876,
+          204054,
+          468620
+        ],
+        "vector_top3": [
+          468620,
+          204054,
+          134876
+        ],
+        "vector_top3_ms": 26.75,
+        "pipeline_20_rerank3": [
+          468620,
+          204054,
+          468620
+        ],
+        "pipeline_20_rerank3_ms": 2368.79
+      },
+      {
+        "qid": "3852",
+        "question": "黑模板多少钱一张",
+        "relevant": [
+          5713,
+          219628,
+          417494
+        ],
+        "vector_top3": [
+          5713,
+          219628,
+          306359
+        ],
+        "vector_top3_ms": 23.99,
+        "pipeline_20_rerank3": [
+          219628,
+          5713,
+          219628
+        ],
+        "pipeline_20_rerank3_ms": 2376.4
+      },
+      {
+        "qid": "3409",
+        "question": "学习状态评价",
+        "relevant": [
+          24208,
+          24209,
+          223364,
+          344073,
+          403578,
+          403579
+        ],
+        "vector_top3": [
+          403579,
+          24209,
+          223364
+        ],
+        "vector_top3_ms": 30.68,
+        "pipeline_20_rerank3": [
+          403579,
+          403579,
+          403579
+        ],
+        "pipeline_20_rerank3_ms": 2064.15
+      },
+      {
+        "qid": "8282",
+        "question": "长安逸动节气门传感器能换吗",
+        "relevant": [
+          12832,
+          63958,
+          70351,
+          184049,
+          279974,
+          415686,
+          465146
+        ],
+        "vector_top3": [
+          63958,
+          63958,
+          63958
+        ],
+        "vector_top3_ms": 28.99,
+        "pipeline_20_rerank3": [
+          63958,
+          63958,
+          63958
+        ],
+        "pipeline_20_rerank3_ms": 3166.06
+      },
+      {
+        "qid": "14709",
+        "question": "钉钉群怎么让不能模糊定位",
+        "relevant": [
+          67495,
+          145147,
+          259541,
+          376457,
+          389018,
+          389019,
+          426067
+        ],
+        "vector_top3": [
+          259541,
+          376457,
+          67495
+        ],
+        "vector_top3_ms": 24.04,
+        "pipeline_20_rerank3": [
+          376457,
+          259541,
+          389018
+        ],
+        "pipeline_20_rerank3_ms": 2043.62
+      },
+      {
+        "qid": "1784",
+        "question": "公鸡白天打鸣好不好",
+        "relevant": [
+          12012,
+          91306,
+          91900,
+          141615,
+          141616,
+          399398
+        ],
+        "vector_top3": [
+          141616,
+          12012,
+          141616
+        ],
+        "vector_top3_ms": 33.35,
+        "pipeline_20_rerank3": [
+          12012,
+          91900,
+          141616
+        ],
+        "pipeline_20_rerank3_ms": 2297.82
+      },
+      {
+        "qid": "12395",
+        "question": "已经注册了的b站会员怎么再次答题",
+        "relevant": [
+          19716,
+          140695,
+          241076
+        ],
+        "vector_top3": [
+          241076,
+          19716,
+          140695
+        ],
+        "vector_top3_ms": 25.9,
+        "pipeline_20_rerank3": [
+          241076,
+          140695,
+          19716
+        ],
+        "pipeline_20_rerank3_ms": 2205.23
+      },
+      {
+        "qid": "4853",
+        "question": "普普罗米修斯的精彩片段感受或想法",
+        "relevant": [
+          7305,
+          19802,
+          384248,
+          430052
+        ],
+        "vector_top3": [
+          430052,
+          7305,
+          1933171
+        ],
+        "vector_top3_ms": 20.61,
+        "pipeline_20_rerank3": [
+          19802,
+          7305,
+          1933171
+        ],
+        "pipeline_20_rerank3_ms": 2366.3
+      },
+      {
+        "qid": "21869",
+        "question": "你对相亲是什么态度",
+        "relevant": [
+          38286,
+          77187,
+          222504,
+          331625
+        ],
+        "vector_top3": [
+          77187,
+          222504,
+          903112
+        ],
+        "vector_top3_ms": 24.52,
+        "pipeline_20_rerank3": [
+          77187,
+          903112,
+          222504
+        ],
+        "pipeline_20_rerank3_ms": 1911.18
+      },
+      {
+        "qid": "23380",
+        "question": "珠三角九城人口",
+        "relevant": [
+          339111,
+          355474,
+          355475,
+          405808
+        ],
+        "vector_top3": [
+          355474,
+          405808,
+          355474
+        ],
+        "vector_top3_ms": 34.31,
+        "pipeline_20_rerank3": [
+          405808,
+          355474,
+          355475
+        ],
+        "pipeline_20_rerank3_ms": 2210.35
+      },
+      {
+        "qid": "14457",
+        "question": "风水上鱼缸不养鱼放门口行吗",
+        "relevant": [
+          93828,
+          182296,
+          323850,
+          392968,
+          462628
+        ],
+        "vector_top3": [
+          392968,
+          323850,
+          182296
+        ],
+        "vector_top3_ms": 24.01,
+        "pipeline_20_rerank3": [
+          462628,
+          182296,
+          392968
+        ],
+        "pipeline_20_rerank3_ms": 2380.0
+      },
+      {
+        "qid": "19038",
+        "question": "2020年一般纳税人税率",
+        "relevant": [
+          136487,
+          165312,
+          170114,
+          396521,
+          446373
+        ],
+        "vector_top3": [
+          170114,
+          136487,
+          165312
+        ],
+        "vector_top3_ms": 28.72,
+        "pipeline_20_rerank3": [
+          170114,
+          136487,
+          396521
+        ],
+        "pipeline_20_rerank3_ms": 2260.49
+      },
+      {
+        "qid": "24941",
+        "question": "给公安同事们的祝福",
+        "relevant": [
+          45511,
+          95880,
+          134840,
+          339545
+        ],
+        "vector_top3": [
+          339545,
+          339545,
+          45511
+        ],
+        "vector_top3_ms": 33.86,
+        "pipeline_20_rerank3": [
+          95880,
+          339545,
+          339545
+        ],
+        "pipeline_20_rerank3_ms": 2454.6
+      },
+      {
+        "qid": "21056",
+        "question": "cfg桩打完砼可以立马回填嘛",
+        "relevant": [
+          36555,
+          36556,
+          87223
+        ],
+        "vector_top3": [
+          36556,
+          36555,
+          36556
+        ],
+        "vector_top3_ms": 35.95,
+        "pipeline_20_rerank3": [
+          1497353,
+          87221,
+          87223
+        ],
+        "pipeline_20_rerank3_ms": 2330.29
+      },
+      {
+        "qid": "13695",
+        "question": "吸毒前科坐高铁验头发吗",
+        "relevant": [
+          104507,
+          105270,
+          432052
+        ],
+        "vector_top3": [
+          432052,
+          289036,
+          432052
+        ],
+        "vector_top3_ms": 34.02,
+        "pipeline_20_rerank3": [
+          432052,
+          289036,
+          289036
+        ],
+        "pipeline_20_rerank3_ms": 2725.96
+      },
+      {
+        "qid": "2933",
+        "question": "linux创建空的txt",
+        "relevant": [
+          4337,
+          55271,
+          85063,
+          135565
+        ],
+        "vector_top3": [
+          135565,
+          55271,
+          85063
+        ],
+        "vector_top3_ms": 27.16,
+        "pipeline_20_rerank3": [
+          135565,
+          4337,
+          85063
+        ],
+        "pipeline_20_rerank3_ms": 2633.46
+      },
+      {
+        "qid": "9158",
+        "question": "京东金条信用分怎么查",
+        "relevant": [
+          14297,
+          255929,
+          263832,
+          435143
+        ],
+        "vector_top3": [
+          14297,
+          864424,
+          864424
+        ],
+        "vector_top3_ms": 24.55,
+        "pipeline_20_rerank3": [
+          14297,
+          263832,
+          306916
+        ],
+        "pipeline_20_rerank3_ms": 2408.26
+      },
+      {
+        "qid": "13854",
+        "question": "动画出国留学",
+        "relevant": [
+          77924,
+          77925,
+          254443,
+          437796
+        ],
+        "vector_top3": [
+          77925,
+          254443,
+          77924
+        ],
+        "vector_top3_ms": 33.67,
+        "pipeline_20_rerank3": [
+          77925,
+          77925,
+          77925
+        ],
+        "pipeline_20_rerank3_ms": 2184.39
+      },
+      {
+        "qid": "2560",
+        "question": "乐路仕隐形车衣怎么样",
+        "relevant": [
+          174370,
+          174371,
+          454881,
+          454882
+        ],
+        "vector_top3": [
+          174371,
+          454882,
+          174371
+        ],
+        "vector_top3_ms": 30.57,
+        "pipeline_20_rerank3": [
+          174371,
+          454882,
+          174370
+        ],
+        "pipeline_20_rerank3_ms": 2378.5
+      },
+      {
+        "qid": "8953",
+        "question": "马拉松健康跑时间限制",
+        "relevant": [
+          13935,
+          164698,
+          243906
+        ],
+        "vector_top3": [
+          695114,
+          164698,
+          243906
+        ],
+        "vector_top3_ms": 29.68,
+        "pipeline_20_rerank3": [
+          695114,
+          164698,
+          695114
+        ],
+        "pipeline_20_rerank3_ms": 2435.33
+      },
+      {
+        "qid": "3885",
+        "question": "河南省太康县的乡村医生政府给买保险了吗",
+        "relevant": [
+          77180,
+          213734,
+          277482,
+          391325
+        ],
+        "vector_top3": [
+          391325,
+          391325,
+          277482
+        ],
+        "vector_top3_ms": 30.87,
+        "pipeline_20_rerank3": [
+          391325,
+          213734,
+          391325
+        ],
+        "pipeline_20_rerank3_ms": 1999.27
+      },
+      {
+        "qid": "17872",
+        "question": "十几年来拉便几天拉一次",
+        "relevant": [
+          107859,
+          217343,
+          288008,
+          299923
+        ],
+        "vector_top3": [
+          217343,
+          107859,
+          288008
+        ],
+        "vector_top3_ms": 19.95,
+        "pipeline_20_rerank3": [
+          107859,
+          217343,
+          288008
+        ],
+        "pipeline_20_rerank3_ms": 2184.43
+      },
+      {
+        "qid": "14828",
+        "question": "于莎莎是不是莫小贝",
+        "relevant": [
+          216363,
+          280466,
+          300193
+        ],
+        "vector_top3": [
+          280466,
+          280466,
+          300193
+        ],
+        "vector_top3_ms": 21.6,
+        "pipeline_20_rerank3": [
+          280466,
+          280466,
+          280466
+        ],
+        "pipeline_20_rerank3_ms": 2860.01
+      },
+      {
+        "qid": "18325",
+        "question": "达权知变打一生肖",
+        "relevant": [
+          288117,
+          288118,
+          395024
+        ],
+        "vector_top3": [
+          288117,
+          635414,
+          2225644
+        ],
+        "vector_top3_ms": 34.52,
+        "pipeline_20_rerank3": [
+          288117,
+          2225644,
+          635414
+        ],
+        "pipeline_20_rerank3_ms": 2560.17
+      },
+      {
+        "qid": "10528",
+        "question": "电影院全区和普通座的区别",
+        "relevant": [
+          220593,
+          392953,
+          469243
+        ],
+        "vector_top3": [
+          220593,
+          392953,
+          469238
+        ],
+        "vector_top3_ms": 27.41,
+        "pipeline_20_rerank3": [
+          220593,
+          392953,
+          469238
+        ],
+        "pipeline_20_rerank3_ms": 2333.23
+      },
+      {
+        "qid": "17593",
+        "question": "扶贫中的零辍学如何对待重度残疾人",
+        "relevant": [
+          29378,
+          29379,
+          88804,
+          177522,
+          430992
+        ],
+        "vector_top3": [
+          177522,
+          177522,
+          88804
+        ],
+        "vector_top3_ms": 32.32,
+        "pipeline_20_rerank3": [
+          29379,
+          177522,
+          29379
+        ],
+        "pipeline_20_rerank3_ms": 2022.11
+      },
+      {
+        "qid": "12870",
+        "question": "孩子火车票身份证",
+        "relevant": [
+          20592,
+          152238,
+          301228
+        ],
+        "vector_top3": [
+          20592,
+          152238,
+          455025
+        ],
+        "vector_top3_ms": 30.78,
+        "pipeline_20_rerank3": [
+          152238,
+          455025,
+          455025
+        ],
+        "pipeline_20_rerank3_ms": 2722.28
+      },
+      {
+        "qid": "3872",
+        "question": "斐讯路由器k2信号不好",
+        "relevant": [
+          56055,
+          158972,
+          300691
+        ],
+        "vector_top3": [
+          300691,
+          1809622,
+          1740717
+        ],
+        "vector_top3_ms": 22.5,
+        "pipeline_20_rerank3": [
+          300691,
+          1740717,
+          158972
+        ],
+        "pipeline_20_rerank3_ms": 3733.47
+      },
+      {
+        "qid": "5377",
+        "question": "宫颈息肉做了一年多为什么伤口总是红",
+        "relevant": [
+          116994,
+          167139,
+          288590
+        ],
+        "vector_top3": [
+          167139,
+          1045602,
+          1045602
+        ],
+        "vector_top3_ms": 23.96,
+        "pipeline_20_rerank3": [
+          167139,
+          116994,
+          288590
+        ],
+        "pipeline_20_rerank3_ms": 2284.19
+      },
+      {
+        "qid": "23099",
+        "question": "有什么好玩的折纸",
+        "relevant": [
+          193788,
+          336309,
+          354761
+        ],
+        "vector_top3": [
+          354761,
+          336309,
+          193788
+        ],
+        "vector_top3_ms": 23.67,
+        "pipeline_20_rerank3": [
+          354761,
+          336309,
+          193788
+        ],
+        "pipeline_20_rerank3_ms": 3287.12
+      },
+      {
+        "qid": "24640",
+        "question": "大众收音机密码进制",
+        "relevant": [
+          44762,
+          84775,
+          496559
+        ],
+        "vector_top3": [
+          44762,
+          496559,
+          496559
+        ],
+        "vector_top3_ms": 27.86,
+        "pipeline_20_rerank3": [
+          44762,
+          496559,
+          358635
+        ],
+        "pipeline_20_rerank3_ms": 2239.03
+      },
+      {
+        "qid": "5526",
+        "question": "阿卡西阅读是什么意思",
+        "relevant": [
+          51749,
+          58623,
+          58624,
+          83800
+        ],
+        "vector_top3": [
+          58624,
+          58624,
+          51749
+        ],
+        "vector_top3_ms": 23.92,
+        "pipeline_20_rerank3": [
+          58623,
+          51749,
+          83800
+        ],
+        "pipeline_20_rerank3_ms": 2156.99
+      },
+      {
+        "qid": "1351",
+        "question": "携带梅毒的衣物高温蒸煮",
+        "relevant": [
+          1958,
+          52964,
+          375085
+        ],
+        "vector_top3": [
+          52964,
+          375085,
+          1958
+        ],
+        "vector_top3_ms": 31.56,
+        "pipeline_20_rerank3": [
+          52964,
+          1958,
+          375085
+        ],
+        "pipeline_20_rerank3_ms": 3017.48
+      },
+      {
+        "qid": "12532",
+        "question": "尚刻刻字机为什么直线小刀",
+        "relevant": [
+          19961,
+          361745,
+          492739
+        ],
+        "vector_top3": [
+          492739,
+          19961,
+          361745
+        ],
+        "vector_top3_ms": 26.95,
+        "pipeline_20_rerank3": [
+          492739,
+          361745,
+          361745
+        ],
+        "pipeline_20_rerank3_ms": 2605.69
+      },
+      {
+        "qid": "14153",
+        "question": "mx350能玩lol吗",
+        "relevant": [
+          22975,
+          380273,
+          408615,
+          495825
+        ],
+        "vector_top3": [
+          22975,
+          2070137,
+          408615
+        ],
+        "vector_top3_ms": 22.98,
+        "pipeline_20_rerank3": [
+          408615,
+          495825,
+          22975
+        ],
+        "pipeline_20_rerank3_ms": 2541.47
+      },
+      {
+        "qid": "7464",
+        "question": "景县妇幼保健院建档需要花钱吗",
+        "relevant": [
+          43957,
+          182816,
+          233702,
+          426225,
+          495726
+        ],
+        "vector_top3": [
+          495726,
+          426225,
+          233702
+        ],
+        "vector_top3_ms": 25.34,
+        "pipeline_20_rerank3": [
+          495726,
+          426225,
+          426225
+        ],
+        "pipeline_20_rerank3_ms": 2299.92
+      },
+      {
+        "qid": "1727",
+        "question": "酸枣怎么熬成白色",
+        "relevant": [
+          2513,
+          312826,
+          483398
+        ],
+        "vector_top3": [
+          2513,
+          312826,
+          312826
+        ],
+        "vector_top3_ms": 25.08,
+        "pipeline_20_rerank3": [
+          2513,
+          312826,
+          312826
+        ],
+        "pipeline_20_rerank3_ms": 2693.78
+      },
+      {
+        "qid": "15083",
+        "question": "群星 关系多少是恶劣",
+        "relevant": [
+          176246,
+          285110,
+          407325,
+          407327
+        ],
+        "vector_top3": [
+          407327,
+          176246,
+          407327
+        ],
+        "vector_top3_ms": 23.24,
+        "pipeline_20_rerank3": [
+          407327,
+          407327,
+          176246
+        ],
+        "pipeline_20_rerank3_ms": 2287.87
+      },
+      {
+        "qid": "15182",
+        "question": "肾结石手术至 阳光标杆",
+        "relevant": [
+          280972,
+          286248,
+          300009
+        ],
+        "vector_top3": [
+          280972,
+          286248,
+          300009
+        ],
+        "vector_top3_ms": 24.94,
+        "pipeline_20_rerank3": [
+          280972,
+          280972,
+          286248
+        ],
+        "pipeline_20_rerank3_ms": 2423.56
+      },
+      {
+        "qid": "13383",
+        "question": "离散数学树是啥",
+        "relevant": [
+          54709,
+          246494,
+          246497,
+          246498,
+          424093,
+          445591
+        ],
+        "vector_top3": [
+          445591,
+          54709,
+          246498
+        ],
+        "vector_top3_ms": 24.25,
+        "pipeline_20_rerank3": [
+          445591,
+          246494,
+          246498
+        ],
+        "pipeline_20_rerank3_ms": 2489.8
+      },
+      {
+        "qid": "9447",
+        "question": "七天学堂修改后无法保存",
+        "relevant": [
+          14760,
+          218877,
+          307411
+        ],
+        "vector_top3": [
+          218877,
+          1293605,
+          307411
+        ],
+        "vector_top3_ms": 33.36,
+        "pipeline_20_rerank3": [
+          1293605,
+          1293605,
+          14760
+        ],
+        "pipeline_20_rerank3_ms": 2307.74
+      },
+      {
+        "qid": "18480",
+        "question": "宝来干式双离合低速升档不顺畅",
+        "relevant": [
+          152057,
+          152058,
+          219239,
+          470326
+        ],
+        "vector_top3": [
+          805294,
+          670676,
+          1782426
+        ],
+        "vector_top3_ms": 24.56,
+        "pipeline_20_rerank3": [
+          805294,
+          1782426,
+          219239
+        ],
+        "pipeline_20_rerank3_ms": 2358.1
+      },
+      {
+        "qid": "11639",
+        "question": "水槽洗碗机 洗蔬菜",
+        "relevant": [
+          18421,
+          41312,
+          51993,
+          121275,
+          241006,
+          294946,
+          376616
+        ],
+        "vector_top3": [
+          743430,
+          294946,
+          41312
+        ],
+        "vector_top3_ms": 24.9,
+        "pipeline_20_rerank3": [
+          294946,
+          121275,
+          294946
+        ],
+        "pipeline_20_rerank3_ms": 2802.21
+      },
+      {
+        "qid": "13454",
+        "question": "杰曼尼的面霜好用吗",
+        "relevant": [
+          21645,
+          21646,
+          44049,
+          104847,
+          386004
+        ],
+        "vector_top3": [
+          21645,
+          21646,
+          21645
+        ],
+        "vector_top3_ms": 30.23,
+        "pipeline_20_rerank3": [
+          21645,
+          21646,
+          104847
+        ],
+        "pipeline_20_rerank3_ms": 2352.59
+      },
+      {
+        "qid": "24321",
+        "question": "原地打方向盘会导致方向盘不正吗",
+        "relevant": [
+          84991,
+          145719,
+          338817,
+          372007,
+          421624,
+          459385
+        ],
+        "vector_top3": [
+          1460990,
+          372007,
+          338817
+        ],
+        "vector_top3_ms": 33.62,
+        "pipeline_20_rerank3": [
+          338817,
+          1460990,
+          145719
+        ],
+        "pipeline_20_rerank3_ms": 1971.83
+      },
+      {
+        "qid": "1255",
+        "question": "莱美资去皱效果怎么样",
+        "relevant": [
+          37794,
+          88022,
+          170564,
+          485808
+        ],
+        "vector_top3": [
+          37794,
+          37794,
+          88022
+        ],
+        "vector_top3_ms": 24.58,
+        "pipeline_20_rerank3": [
+          37794,
+          88022,
+          88022
+        ],
+        "pipeline_20_rerank3_ms": 2312.96
+      },
+      {
+        "qid": "15350",
+        "question": "能发力的地方吗",
+        "relevant": [
+          25077,
+          130121,
+          281954
+        ],
+        "vector_top3": [
+          46476,
+          46476,
+          131818
+        ],
+        "vector_top3_ms": 22.25,
+        "pipeline_20_rerank3": [
+          130121,
+          301942,
+          438387
+        ],
+        "pipeline_20_rerank3_ms": 2106.68
+      },
+      {
+        "qid": "9171",
+        "question": "营业执照没申报怎么办",
+        "relevant": [
+          14315,
+          14316,
+          179685,
+          278961
+        ],
+        "vector_top3": [
+          762766,
+          278961,
+          14315
+        ],
+        "vector_top3_ms": 30.74,
+        "pipeline_20_rerank3": [
+          278961,
+          14315,
+          14316
+        ],
+        "pipeline_20_rerank3_ms": 2142.46
+      },
+      {
+        "qid": "21181",
+        "question": "龙宫是不是比月球远",
+        "relevant": [
+          368622,
+          462912,
+          465918
+        ],
+        "vector_top3": [
+          462912,
+          317612,
+          462912
+        ],
+        "vector_top3_ms": 28.75,
+        "pipeline_20_rerank3": [
+          317612,
+          465918,
+          317612
+        ],
+        "pipeline_20_rerank3_ms": 2557.76
+      },
+      {
+        "qid": "7216",
+        "question": "昆山市江鸿科技迟到多长时间没有全勤奖",
+        "relevant": [
+          11136,
+          207633,
+          495119
+        ],
+        "vector_top3": [
+          11136,
+          11136,
+          207633
+        ],
+        "vector_top3_ms": 24.73,
+        "pipeline_20_rerank3": [
+          207633,
+          11136,
+          11136
+        ],
+        "pipeline_20_rerank3_ms": 2323.83
+      },
+      {
+        "qid": "4717",
+        "question": "微次氯酸钠消毒液的禁忌",
+        "relevant": [
+          199789,
+          368903,
+          372123,
+          498161
+        ],
+        "vector_top3": [
+          498161,
+          372123,
+          368903
+        ],
+        "vector_top3_ms": 31.39,
+        "pipeline_20_rerank3": [
+          372123,
+          199789,
+          498161
+        ],
+        "pipeline_20_rerank3_ms": 2734.19
+      },
+      {
+        "qid": "5588",
+        "question": "自然生产的水果都是不甜的吗",
+        "relevant": [
+          8473,
+          50861,
+          235464,
+          279572,
+          490089
+        ],
+        "vector_top3": [
+          50861,
+          279572,
+          50861
+        ],
+        "vector_top3_ms": 32.71,
+        "pipeline_20_rerank3": [
+          235464,
+          50861,
+          490089
+        ],
+        "pipeline_20_rerank3_ms": 2932.38
+      },
+      {
+        "qid": "16608",
+        "question": "小米纸质护眼和经典护眼",
+        "relevant": [
+          27502,
+          124899,
+          136254,
+          175195
+        ],
+        "vector_top3": [
+          136254,
+          136254,
+          124899
+        ],
+        "vector_top3_ms": 26.56,
+        "pipeline_20_rerank3": [
+          136254,
+          136254,
+          175195
+        ],
+        "pipeline_20_rerank3_ms": 2745.0
+      },
+      {
+        "qid": "9742",
+        "question": "吃了桉柠蒎肠溶软胶囊有味道",
+        "relevant": [
+          22093,
+          28191,
+          142971,
+          199565,
+          309554,
+          342134
+        ],
+        "vector_top3": [
+          342134,
+          199565,
+          28191
+        ],
+        "vector_top3_ms": 31.06,
+        "pipeline_20_rerank3": [
+          342134,
+          199565,
+          2109165
+        ],
+        "pipeline_20_rerank3_ms": 2321.83
+      },
+      {
+        "qid": "15335",
+        "question": "喝完清肠药左下腹 有点疼",
+        "relevant": [
+          146035,
+          314188,
+          317569,
+          478785
+        ],
+        "vector_top3": [
+          146035,
+          314188,
+          478785
+        ],
+        "vector_top3_ms": 25.59,
+        "pipeline_20_rerank3": [
+          314188,
+          478785,
+          146035
+        ],
+        "pipeline_20_rerank3_ms": 2154.81
+      },
+      {
+        "qid": "23209",
+        "question": "300多分走单招有哪些好的学校",
+        "relevant": [
+          155338,
+          218837,
+          477730
+        ],
+        "vector_top3": [
+          155338,
+          477730,
+          155338
+        ],
+        "vector_top3_ms": 22.38,
+        "pipeline_20_rerank3": [
+          218837,
+          155338,
+          477730
+        ],
+        "pipeline_20_rerank3_ms": 2014.84
+      },
+      {
+        "qid": "7595",
+        "question": "loft公寓值得买吗",
+        "relevant": [
+          11720,
+          242471,
+          336206,
+          336207
+        ],
+        "vector_top3": [
+          336206,
+          242471,
+          336206
+        ],
+        "vector_top3_ms": 29.47,
+        "pipeline_20_rerank3": [
+          336206,
+          1842364,
+          242471
+        ],
+        "pipeline_20_rerank3_ms": 2012.49
+      },
+      {
+        "qid": "7213",
+        "question": "三方协议要当面签吗",
+        "relevant": [
+          108165,
+          292430,
+          300305,
+          300306,
+          342644
+        ],
+        "vector_top3": [
+          342644,
+          300306,
+          108165
+        ],
+        "vector_top3_ms": 26.03,
+        "pipeline_20_rerank3": [
+          292430,
+          300306,
+          342644
+        ],
+        "pipeline_20_rerank3_ms": 2066.61
+      },
+      {
+        "qid": "11288",
+        "question": "2016年专升本报名时间",
+        "relevant": [
+          250188,
+          393155,
+          393157,
+          489728
+        ],
+        "vector_top3": [
+          393157,
+          393157,
+          393157
+        ],
+        "vector_top3_ms": 24.01,
+        "pipeline_20_rerank3": [
+          489728,
+          393157,
+          393157
+        ],
+        "pipeline_20_rerank3_ms": 2178.59
+      },
+      {
+        "qid": "12154",
+        "question": "想不想修真祈愿口令2021",
+        "relevant": [
+          19315,
+          109874,
+          121705,
+          230740,
+          281340
+        ],
+        "vector_top3": [
+          230740,
+          19315,
+          109874
+        ],
+        "vector_top3_ms": 30.87,
+        "pipeline_20_rerank3": [
+          19315,
+          281340,
+          109874
+        ],
+        "pipeline_20_rerank3_ms": 3570.23
+      },
+      {
+        "qid": "14379",
+        "question": "上海学生核酸检测是自费还是免费",
+        "relevant": [
+          23365,
+          95436,
+          358867,
+          393704,
+          399796,
+          449063
+        ],
+        "vector_top3": [
+          393704,
+          399796,
+          399796
+        ],
+        "vector_top3_ms": 24.35,
+        "pipeline_20_rerank3": [
+          393704,
+          393704,
+          449063
+        ],
+        "pipeline_20_rerank3_ms": 2479.9
+      },
+      {
+        "qid": "23460",
+        "question": "时河南程颢与弟颐讲孔的时是什么意思",
+        "relevant": [
+          242928,
+          394030,
+          404760
+        ],
+        "vector_top3": [
+          404760,
+          394030,
+          242928
+        ],
+        "vector_top3_ms": 28.68,
+        "pipeline_20_rerank3": [
+          242928,
+          404760,
+          394030
+        ],
+        "pipeline_20_rerank3_ms": 2915.59
+      },
+      {
+        "qid": "5107",
+        "question": "手戳中眼珠子会怎么样",
+        "relevant": [
+          13552,
+          18677,
+          63741,
+          372011
+        ],
+        "vector_top3": [
+          13552,
+          18677,
+          63741
+        ],
+        "vector_top3_ms": 26.7,
+        "pipeline_20_rerank3": [
+          18677,
+          13552,
+          63741
+        ],
+        "pipeline_20_rerank3_ms": 2434.04
+      },
+      {
+        "qid": "11248",
+        "question": "全日制铁路院校哪个好",
+        "relevant": [
+          9449,
+          68020,
+          99948,
+          99949,
+          106426,
+          335326,
+          441668
+        ],
+        "vector_top3": [
+          335326,
+          68020,
+          9449
+        ],
+        "vector_top3_ms": 21.25,
+        "pipeline_20_rerank3": [
+          99949,
+          68020,
+          335326
+        ],
+        "pipeline_20_rerank3_ms": 2162.98
+      },
+      {
+        "qid": "7731",
+        "question": "第三届进博会普通观展如何预约",
+        "relevant": [
+          58267,
+          132516,
+          135586
+        ],
+        "vector_top3": [
+          413855,
+          135586,
+          132516
+        ],
+        "vector_top3_ms": 21.09,
+        "pipeline_20_rerank3": [
+          135586,
+          132516,
+          413855
+        ],
+        "pipeline_20_rerank3_ms": 2262.35
+      },
+      {
+        "qid": "17101",
+        "question": "魔球修改器能修改霸主吗",
+        "relevant": [
+          110494,
+          110495,
+          115594
+        ],
+        "vector_top3": [
+          110495,
+          181008,
+          115594
+        ],
+        "vector_top3_ms": 21.01,
+        "pipeline_20_rerank3": [
+          110495,
+          110494,
+          181008
+        ],
+        "pipeline_20_rerank3_ms": 2649.65
+      },
+      {
+        "qid": "23441",
+        "question": "女性的生殖器什么时候开始变化",
+        "relevant": [
+          151877,
+          355777,
+          444094,
+          475845
+        ],
+        "vector_top3": [
+          355777,
+          749801,
+          151877
+        ],
+        "vector_top3_ms": 24.41,
+        "pipeline_20_rerank3": [
+          355777,
+          749801,
+          151877
+        ],
+        "pipeline_20_rerank3_ms": 2301.36
+      },
+      {
+        "qid": "660",
+        "question": "银屑灵洗剂洗头发",
+        "relevant": [
+          195909,
+          366002,
+          476786
+        ],
+        "vector_top3": [
+          366002,
+          476786,
+          327944
+        ],
+        "vector_top3_ms": 29.67,
+        "pipeline_20_rerank3": [
+          366002,
+          476786,
+          366002
+        ],
+        "pipeline_20_rerank3_ms": 2740.19
+      },
+      {
+        "qid": "24457",
+        "question": "珠海航展坐什么车去",
+        "relevant": [
+          44314,
+          121801,
+          135746,
+          210193,
+          257007,
+          331701,
+          344830,
+          449795
+        ],
+        "vector_top3": [
+          44314,
+          449795,
+          331701
+        ],
+        "vector_top3_ms": 25.31,
+        "pipeline_20_rerank3": [
+          44314,
+          121801,
+          257007
+        ],
+        "pipeline_20_rerank3_ms": 2603.52
+      },
+      {
+        "qid": "18558",
+        "question": "危机中育新机 变局中开新局的出处",
+        "relevant": [
+          31206,
+          311032,
+          345918
+        ],
+        "vector_top3": [
+          311032,
+          311032,
+          345918
+        ],
+        "vector_top3_ms": 20.59,
+        "pipeline_20_rerank3": [
+          311032,
+          311032,
+          311032
+        ],
+        "pipeline_20_rerank3_ms": 2388.03
+      },
+      {
+        "qid": "7575",
+        "question": "犀牛怎么提取边线",
+        "relevant": [
+          215033,
+          281568,
+          387412
+        ],
+        "vector_top3": [
+          281568,
+          215033,
+          110169
+        ],
+        "vector_top3_ms": 28.33,
+        "pipeline_20_rerank3": [
+          281568,
+          215033,
+          281568
+        ],
+        "pipeline_20_rerank3_ms": 2614.83
+      },
+      {
+        "qid": "3142",
+        "question": "尼坤软膏的功效",
+        "relevant": [
+          87845,
+          258972,
+          258973,
+          371440
+        ],
+        "vector_top3": [
+          258972,
+          258973,
+          126488
+        ],
+        "vector_top3_ms": 30.06,
+        "pipeline_20_rerank3": [
+          258973,
+          258972,
+          331750
+        ],
+        "pipeline_20_rerank3_ms": 2352.74
+      },
+      {
+        "qid": "20856",
+        "question": "创可贴产品备案号",
+        "relevant": [
+          216090,
+          320144,
+          388430
+        ],
+        "vector_top3": [
+          320144,
+          388430,
+          492739
+        ],
+        "vector_top3_ms": 28.43,
+        "pipeline_20_rerank3": [
+          320144,
+          388430,
+          570799
+        ],
+        "pipeline_20_rerank3_ms": 3309.92
+      },
+      {
+        "qid": "4112",
+        "question": "三个人想一起坐跨城的顺风车怎么办",
+        "relevant": [
+          6102,
+          424705,
+          457525,
+          478962
+        ],
+        "vector_top3": [
+          478962,
+          457525,
+          424705
+        ],
+        "vector_top3_ms": 22.93,
+        "pipeline_20_rerank3": [
+          424705,
+          478962,
+          457525
+        ],
+        "pipeline_20_rerank3_ms": 2547.0
+      },
+      {
+        "qid": "14279",
+        "question": "是什么意思数学符 号什么时候学",
+        "relevant": [
+          92177,
+          106372,
+          227068,
+          314185
+        ],
+        "vector_top3": [
+          314185,
+          314185,
+          106372
+        ],
+        "vector_top3_ms": 25.03,
+        "pipeline_20_rerank3": [
+          314185,
+          314185,
+          227068
+        ],
+        "pipeline_20_rerank3_ms": 3016.0
+      },
+      {
+        "qid": "1683",
+        "question": "大学毕业是拿学位证要求的绩点是学位绩点吗",
+        "relevant": [
+          2456,
+          75734,
+          196647,
+          246788,
+          389965
+        ],
+        "vector_top3": [
+          75734,
+          389965,
+          246788
+        ],
+        "vector_top3_ms": 31.92,
+        "pipeline_20_rerank3": [
+          75734,
+          196647,
+          246788
+        ],
+        "pipeline_20_rerank3_ms": 2207.39
+      },
+      {
+        "qid": "17088",
+        "question": "德国有多少人口2019",
+        "relevant": [
+          28400,
+          28401,
+          198801,
+          332598,
+          398657,
+          424257
+        ],
+        "vector_top3": [
+          182104,
+          28400,
+          424257
+        ],
+        "vector_top3_ms": 23.0,
+        "pipeline_20_rerank3": [
+          332598,
+          398657,
+          211150
+        ],
+        "pipeline_20_rerank3_ms": 2260.71
+      },
+      {
+        "qid": "13175",
+        "question": "未被未敢忘忧国",
+        "relevant": [
+          126134,
+          170422,
+          291973,
+          449740
+        ],
+        "vector_top3": [
+          449740,
+          63639,
+          170422
+        ],
+        "vector_top3_ms": 22.42,
+        "pipeline_20_rerank3": [
+          63639,
+          170422,
+          401796
+        ],
+        "pipeline_20_rerank3_ms": 2813.56
+      },
+      {
+        "qid": "17504",
+        "question": "苹果手机怎么设置公交卡密码",
+        "relevant": [
+          221143,
+          299275,
+          299276,
+          337554,
+          388366,
+          388367
+        ],
+        "vector_top3": [
+          299275,
+          337554,
+          221143
+        ],
+        "vector_top3_ms": 20.99,
+        "pipeline_20_rerank3": [
+          337554,
+          221143,
+          388367
+        ],
+        "pipeline_20_rerank3_ms": 2396.46
+      },
+      {
+        "qid": "1930",
+        "question": "红斑狼疮抗核抗体检查",
+        "relevant": [
+          64905,
+          75935,
+          125873,
+          256996,
+          318428,
+          357665,
+          357667
+        ],
+        "vector_top3": [
+          125873,
+          64905,
+          318428
+        ],
+        "vector_top3_ms": 22.95,
+        "pipeline_20_rerank3": [
+          125873,
+          64905,
+          318428
+        ],
+        "pipeline_20_rerank3_ms": 2608.74
+      },
+      {
+        "qid": "20213",
+        "question": "僵尸的那个动画片叫什么",
+        "relevant": [
+          117575,
+          238569,
+          365253
+        ],
+        "vector_top3": [
+          238569,
+          117575,
+          794851
+        ],
+        "vector_top3_ms": 20.4,
+        "pipeline_20_rerank3": [
+          117575,
+          365253,
+          647277
+        ],
+        "pipeline_20_rerank3_ms": 2381.39
+      },
+      {
+        "qid": "15290",
+        "question": "离婚的女人能理吗",
+        "relevant": [
+          110476,
+          185043,
+          228784
+        ],
+        "vector_top3": [
+          185043,
+          110476,
+          110476
+        ],
+        "vector_top3_ms": 26.69,
+        "pipeline_20_rerank3": [
+          185043,
+          228784,
+          228784
+        ],
+        "pipeline_20_rerank3_ms": 2207.21
+      },
+      {
+        "qid": "1363",
+        "question": "政治建设是党的基础性建设",
+        "relevant": [
+          291199,
+          332727,
+          434193
+        ],
+        "vector_top3": [
+          434193,
+          332727,
+          332727
+        ],
+        "vector_top3_ms": 30.07,
+        "pipeline_20_rerank3": [
+          434193,
+          332727,
+          332727
+        ],
+        "pipeline_20_rerank3_ms": 2003.05
+      },
+      {
+        "qid": "23888",
+        "question": "刘和刚最近有新的作品吗",
+        "relevant": [
+          42972,
+          202693,
+          433124
+        ],
+        "vector_top3": [
+          202693,
+          202693,
+          433124
+        ],
+        "vector_top3_ms": 31.24,
+        "pipeline_20_rerank3": [
+          42972,
+          202693,
+          433124
+        ],
+        "pipeline_20_rerank3_ms": 2421.32
+      },
+      {
+        "qid": "12889",
+        "question": "蜀色茶颜是湖北的么",
+        "relevant": [
+          331963,
+          382877,
+          414396
+        ],
+        "vector_top3": [
+          382877,
+          382877,
+          382877
+        ],
+        "vector_top3_ms": 23.18,
+        "pipeline_20_rerank3": [
+          382877,
+          681321,
+          331963
+        ],
+        "pipeline_20_rerank3_ms": 2928.33
+      },
+      {
+        "qid": "20950",
+        "question": "支付宝付完款攒现金",
+        "relevant": [
+          36331,
+          36332,
+          250963,
+          366945,
+          488121
+        ],
+        "vector_top3": [
+          488121,
+          250963,
+          36332
+        ],
+        "vector_top3_ms": 30.52,
+        "pipeline_20_rerank3": [
+          250963,
+          488121,
+          366945
+        ],
+        "pipeline_20_rerank3_ms": 2250.18
+      },
+      {
+        "qid": "3830",
+        "question": "塞尔维亚对中国免签吗",
+        "relevant": [
+          5684,
+          71984,
+          358647,
+          358648,
+          394724,
+          473924,
+          473926,
+          473927
+        ],
+        "vector_top3": [
+          358648,
+          473927,
+          473927
+        ],
+        "vector_top3_ms": 25.83,
+        "pipeline_20_rerank3": [
+          473927,
+          358648,
+          473926
+        ],
+        "pipeline_20_rerank3_ms": 2329.63
+      },
+      {
+        "qid": "23357",
+        "question": "我们面对人生中的起落,好运歹运该如何处理呢",
+        "relevant": [
+          267161,
+          301942,
+          385723,
+          385724,
+          493339
+        ],
+        "vector_top3": [
+          493339,
+          493339,
+          493339
+        ],
+        "vector_top3_ms": 25.78,
+        "pipeline_20_rerank3": [
+          493339,
+          301942,
+          267161
+        ],
+        "pipeline_20_rerank3_ms": 2211.08
+      },
+      {
+        "qid": "7195",
+        "question": "新城控股在长沙有哪些楼盘",
+        "relevant": [
+          305514,
+          305521,
+          312752
+        ],
+        "vector_top3": [
+          305514,
+          305521,
+          686894
+        ],
+        "vector_top3_ms": 25.15,
+        "pipeline_20_rerank3": [
+          305514,
+          305514,
+          305521
+        ],
+        "pipeline_20_rerank3_ms": 2545.76
+      },
+      {
+        "qid": "6475",
+        "question": "如果暧昧的人很久才联系你是不是吊着你",
+        "relevant": [
+          9908,
+          113678,
+          337632,
+          346952
+        ],
+        "vector_top3": [
+          968947,
+          1058579,
+          9908
+        ],
+        "vector_top3_ms": 28.92,
+        "pipeline_20_rerank3": [
+          113678,
+          9908,
+          1058579
+        ],
+        "pipeline_20_rerank3_ms": 2128.06
+      },
+      {
+        "qid": "6591",
+        "question": "北街小学里边,精装修,家具家电齐全,租既住",
+        "relevant": [
+          256992,
+          302403,
+          307380
+        ],
+        "vector_top3": [
+          307380,
+          256992,
+          1608270
+        ],
+        "vector_top3_ms": 23.34,
+        "pipeline_20_rerank3": [
+          307380,
+          256992,
+          1516632
+        ],
+        "pipeline_20_rerank3_ms": 2550.53
+      },
+      {
+        "qid": "6088",
+        "question": "格拉斯哥大学公共政策管理就业方向",
+        "relevant": [
+          9277,
+          162359,
+          393511
+        ],
+        "vector_top3": [
+          162359,
+          162359,
+          9277
+        ],
+        "vector_top3_ms": 22.19,
+        "pipeline_20_rerank3": [
+          162359,
+          162359,
+          9277
+        ],
+        "pipeline_20_rerank3_ms": 2463.13
+      },
+      {
+        "qid": "6826",
+        "question": "黑杰克21点技巧",
+        "relevant": [
+          94769,
+          175716,
+          342269,
+          457763,
+          457765,
+          462875
+        ],
+        "vector_top3": [
+          462875,
+          462875,
+          462875
+        ],
+        "vector_top3_ms": 28.58,
+        "pipeline_20_rerank3": [
+          94769,
+          462875,
+          462875
+        ],
+        "pipeline_20_rerank3_ms": 2359.37
+      },
+      {
+        "qid": "10661",
+        "question": "足金换硬金划算吗",
+        "relevant": [
+          196456,
+          408431,
+          440680
+        ],
+        "vector_top3": [
+          408431,
+          408431,
+          196456
+        ],
+        "vector_top3_ms": 24.87,
+        "pipeline_20_rerank3": [
+          408431,
+          408431,
+          408431
+        ],
+        "pipeline_20_rerank3_ms": 2242.93
+      },
+      {
+        "qid": "12523",
+        "question": "癸水天干的伤官是什么",
+        "relevant": [
+          19943,
+          360520,
+          472181
+        ],
+        "vector_top3": [
+          19943,
+          19943,
+          19943
+        ],
+        "vector_top3_ms": 26.7,
+        "pipeline_20_rerank3": [
+          472181,
+          19943,
+          19943
+        ],
+        "pipeline_20_rerank3_ms": 3378.01
+      },
+      {
+        "qid": "23338",
+        "question": "地势和地形的区别",
+        "relevant": [
+          41626,
+          102148,
+          140948,
+          454567
+        ],
+        "vector_top3": [
+          407132,
+          454567,
+          454567
+        ],
+        "vector_top3_ms": 20.13,
+        "pipeline_20_rerank3": [
+          454567,
+          454567,
+          407132
+        ],
+        "pipeline_20_rerank3_ms": 2646.87
+      },
+      {
+        "qid": "19149",
+        "question": "中东版普拉多4000txl蓝牙怎么连接哦",
+        "relevant": [
+          82832,
+          296661,
+          388662,
+          396723,
+          482729
+        ],
+        "vector_top3": [
+          82832,
+          388662,
+          82832
+        ],
+        "vector_top3_ms": 29.81,
+        "pipeline_20_rerank3": [
+          82832,
+          388662,
+          82832
+        ],
+        "pipeline_20_rerank3_ms": 2706.63
+      },
+      {
+        "qid": "8106",
+        "question": "竞价曝光是什么意思",
+        "relevant": [
+          204503,
+          269981,
+          409369,
+          464325
+        ],
+        "vector_top3": [
+          269981,
+          409369,
+          464325
+        ],
+        "vector_top3_ms": 27.7,
+        "pipeline_20_rerank3": [
+          269981,
+          464325,
+          409369
+        ],
+        "pipeline_20_rerank3_ms": 2092.83
+      },
+      {
+        "qid": "10033",
+        "question": "lol回放怎么抬高",
+        "relevant": [
+          326132,
+          347543,
+          468028
+        ],
+        "vector_top3": [
+          468028,
+          326132,
+          326132
+        ],
+        "vector_top3_ms": 34.47,
+        "pipeline_20_rerank3": [
+          347543,
+          326132,
+          326132
+        ],
+        "pipeline_20_rerank3_ms": 2239.91
+      },
+      {
+        "qid": "18580",
+        "question": "吊消炎针一般价格",
+        "relevant": [
+          31243,
+          53497,
+          103777,
+          152255,
+          202436,
+          284017,
+          317672,
+          455069
+        ],
+        "vector_top3": [
+          284017,
+          317672,
+          103777
+        ],
+        "vector_top3_ms": 28.53,
+        "pipeline_20_rerank3": [
+          31243,
+          455069,
+          284017
+        ],
+        "pipeline_20_rerank3_ms": 2279.02
+      },
+      {
+        "qid": "18036",
+        "question": "核磁共振可以检查淋巴",
+        "relevant": [
+          98921,
+          341739,
+          394512
+        ],
+        "vector_top3": [
+          394512,
+          98921,
+          1525562
+        ],
+        "vector_top3_ms": 26.61,
+        "pipeline_20_rerank3": [
+          394512,
+          98921,
+          341739
+        ],
+        "pipeline_20_rerank3_ms": 2333.85
+      },
+      {
+        "qid": "17889",
+        "question": "132平三室两厅两卫怎么布局最好",
+        "relevant": [
+          35476,
+          63485,
+          80259,
+          123517,
+          123519,
+          487178,
+          487185
+        ],
+        "vector_top3": [
+          123519,
+          35476,
+          650006
+        ],
+        "vector_top3_ms": 26.85,
+        "pipeline_20_rerank3": [
+          35476,
+          35476,
+          63485
+        ],
+        "pipeline_20_rerank3_ms": 2518.79
+      },
+      {
+        "qid": "10261",
+        "question": "酒会漏风过期吗",
+        "relevant": [
+          16062,
+          99451,
+          361556
+        ],
+        "vector_top3": [
+          361556,
+          99451,
+          16062
+        ],
+        "vector_top3_ms": 26.12,
+        "pipeline_20_rerank3": [
+          99451,
+          361556,
+          16062
+        ],
+        "pipeline_20_rerank3_ms": 2409.14
+      },
+      {
+        "qid": "16431",
+        "question": "中国十大团餐品牌",
+        "relevant": [
+          27134,
+          130905,
+          213938,
+          219211,
+          499314
+        ],
+        "vector_top3": [
+          219211,
+          219211,
+          27134
+        ],
+        "vector_top3_ms": 25.58,
+        "pipeline_20_rerank3": [
+          219211,
+          27134,
+          219211
+        ],
+        "pipeline_20_rerank3_ms": 2276.26
+      },
+      {
+        "qid": "3682",
+        "question": "k3蒸发箱漏氟维修要多少钱",
+        "relevant": [
+          135570,
+          148978,
+          236324
+        ],
+        "vector_top3": [
+          148978,
+          236324,
+          236324
+        ],
+        "vector_top3_ms": 30.98,
+        "pipeline_20_rerank3": [
+          148978,
+          786128,
+          236324
+        ],
+        "pipeline_20_rerank3_ms": 2352.25
+      },
+      {
+        "qid": "12184",
+        "question": "2021云飞上春晚吗",
+        "relevant": [
+          57511,
+          433358,
+          488530
+        ],
+        "vector_top3": [
+          57511,
+          1384362,
+          433358
+        ],
+        "vector_top3_ms": 31.61,
+        "pipeline_20_rerank3": [
+          57511,
+          433358,
+          433358
+        ],
+        "pipeline_20_rerank3_ms": 2589.21
+      },
+      {
+        "qid": "3083",
+        "question": "挞定之后还能退定金吗",
+        "relevant": [
+          4545,
+          36309,
+          51668,
+          117728,
+          179991
+        ],
+        "vector_top3": [
+          36309,
+          179991,
+          51668
+        ],
+        "vector_top3_ms": 21.28,
+        "pipeline_20_rerank3": [
+          179991,
+          36309,
+          36309
+        ],
+        "pipeline_20_rerank3_ms": 2145.6
+      },
+      {
+        "qid": "8557",
+        "question": "初学柔力球怎样入门",
+        "relevant": [
+          13274,
+          380830,
+          455235,
+          455236,
+          470704
+        ],
+        "vector_top3": [
+          380830,
+          470704,
+          13274
+        ],
+        "vector_top3_ms": 26.15,
+        "pipeline_20_rerank3": [
+          380830,
+          13274,
+          455236
+        ],
+        "pipeline_20_rerank3_ms": 2372.62
+      },
+      {
+        "qid": "8568",
+        "question": "生化危机7选谁会得到好结局",
+        "relevant": [
+          134266,
+          135852,
+          179391
+        ],
+        "vector_top3": [
+          135852,
+          134266,
+          179391
+        ],
+        "vector_top3_ms": 23.21,
+        "pipeline_20_rerank3": [
+          134266,
+          135852,
+          179391
+        ],
+        "pipeline_20_rerank3_ms": 2365.95
+      },
+      {
+        "qid": "8456",
+        "question": "喝多了从嘴留口水",
+        "relevant": [
+          13095,
+          117131,
+          383666
+        ],
+        "vector_top3": [
+          383666,
+          13095,
+          383666
+        ],
+        "vector_top3_ms": 29.39,
+        "pipeline_20_rerank3": [
+          13095,
+          383666,
+          309554
+        ],
+        "pipeline_20_rerank3_ms": 2196.97
+      },
+      {
+        "qid": "5899",
+        "question": "主板b365和b460哪个好点",
+        "relevant": [
+          200931,
+          487790,
+          493059
+        ],
+        "vector_top3": [
+          2056067,
+          611119,
+          493059
+        ],
+        "vector_top3_ms": 27.59,
+        "pipeline_20_rerank3": [
+          796461,
+          493059,
+          493059
+        ],
+        "pipeline_20_rerank3_ms": 2644.97
+      },
+      {
+        "qid": "24775",
+        "question": "漆黑的魅影盖欧卡剧情触发",
+        "relevant": [
+          45095,
+          67503,
+          236560,
+          236561,
+          444412
+        ],
+        "vector_top3": [
+          212072,
+          1598312,
+          1598312
+        ],
+        "vector_top3_ms": 23.35,
+        "pipeline_20_rerank3": [
+          444412,
+          212072,
+          207733
+        ],
+        "pipeline_20_rerank3_ms": 3120.92
+      },
+      {
+        "qid": "17669",
+        "question": "资料员报考多少钱",
+        "relevant": [
+          56597,
+          85435,
+          167755,
+          315605,
+          350133,
+          488260
+        ],
+        "vector_top3": [
+          167755,
+          56597,
+          315605
+        ],
+        "vector_top3_ms": 25.09,
+        "pipeline_20_rerank3": [
+          167755,
+          315605,
+          350133
+        ],
+        "pipeline_20_rerank3_ms": 2230.5
+      },
+      {
+        "qid": "12655",
+        "question": "一年级的手抄报怎么画",
+        "relevant": [
+          21975,
+          213944,
+          290060,
+          304604
+        ],
+        "vector_top3": [
+          21975,
+          304604,
+          290060
+        ],
+        "vector_top3_ms": 26.88,
+        "pipeline_20_rerank3": [
+          21975,
+          290060,
+          304604
+        ],
+        "pipeline_20_rerank3_ms": 2565.84
+      },
+      {
+        "qid": "9225",
+        "question": "空放机是什么",
+        "relevant": [
+          153741,
+          395780,
+          395785
+        ],
+        "vector_top3": [
+          153741,
+          395780,
+          395785
+        ],
+        "vector_top3_ms": 20.22,
+        "pipeline_20_rerank3": [
+          395785,
+          395780,
+          153741
+        ],
+        "pipeline_20_rerank3_ms": 2778.08
+      },
+      {
+        "qid": "6582",
+        "question": "品欧生活家具怎么样",
+        "relevant": [
+          93444,
+          232046,
+          326400,
+          398053
+        ],
+        "vector_top3": [
+          398053,
+          232046,
+          93444
+        ],
+        "vector_top3_ms": 32.01,
+        "pipeline_20_rerank3": [
+          398053,
+          93444,
+          232046
+        ],
+        "pipeline_20_rerank3_ms": 3075.57
+      },
+      {
+        "qid": "22664",
+        "question": "中科院面试及入职流程",
+        "relevant": [
+          406903,
+          440081,
+          440082
+        ],
+        "vector_top3": [
+          440082,
+          440082,
+          440081
+        ],
+        "vector_top3_ms": 25.02,
+        "pipeline_20_rerank3": [
+          440082,
+          440081,
+          440082
+        ],
+        "pipeline_20_rerank3_ms": 2122.67
+      },
+      {
+        "qid": "3117",
+        "question": "安置费是没月发工资吗",
+        "relevant": [
+          115587,
+          165731,
+          452187
+        ],
+        "vector_top3": [
+          115587,
+          115587,
+          165731
+        ],
+        "vector_top3_ms": 26.73,
+        "pipeline_20_rerank3": [
+          115587,
+          165731,
+          115587
+        ],
+        "pipeline_20_rerank3_ms": 2372.13
+      },
+      {
+        "qid": "17736",
+        "question": "幽门螺旋四联药哪一种是吃上口水多",
+        "relevant": [
+          142832,
+          170900,
+          200796
+        ],
+        "vector_top3": [
+          1995671,
+          142832,
+          200796
+        ],
+        "vector_top3_ms": 31.55,
+        "pipeline_20_rerank3": [
+          200796,
+          142832,
+          1145238
+        ],
+        "pipeline_20_rerank3_ms": 2210.17
+      },
+      {
+        "qid": "9160",
+        "question": "12306同一天不同时间段的候补票可以换吗",
+        "relevant": [
+          64511,
+          102916,
+          102917,
+          183705
+        ],
+        "vector_top3": [
+          64511,
+          743526,
+          102916
+        ],
+        "vector_top3_ms": 24.16,
+        "pipeline_20_rerank3": [
+          64511,
+          102916,
+          102917
+        ],
+        "pipeline_20_rerank3_ms": 2254.5
+      },
+      {
+        "qid": "15554",
+        "question": "小学生怎样保护好自己的眼睛(视频)",
+        "relevant": [
+          69902,
+          108596,
+          190926
+        ],
+        "vector_top3": [
+          108596,
+          69902,
+          210541
+        ],
+        "vector_top3_ms": 22.06,
+        "pipeline_20_rerank3": [
+          108596,
+          190926,
+          210541
+        ],
+        "pipeline_20_rerank3_ms": 2376.15
+      },
+      {
+        "qid": "16061",
+        "question": "糜烂性胃炎上腹火辣辣痛",
+        "relevant": [
+          110235,
+          160356,
+          197595,
+          473169,
+          478447
+        ],
+        "vector_top3": [
+          160356,
+          478447,
+          1749600
+        ],
+        "vector_top3_ms": 24.9,
+        "pipeline_20_rerank3": [
+          478447,
+          160356,
+          197595
+        ],
+        "pipeline_20_rerank3_ms": 2149.98
+      },
+      {
+        "qid": "7890",
+        "question": "注册qq检测手机不安全",
+        "relevant": [
+          52463,
+          59128,
+          170666
+        ],
+        "vector_top3": [
+          59128,
+          52463,
+          170666
+        ],
+        "vector_top3_ms": 35.25,
+        "pipeline_20_rerank3": [
+          59128,
+          170666,
+          52463
+        ],
+        "pipeline_20_rerank3_ms": 2010.26
+      },
+      {
+        "qid": "10332",
+        "question": "商家怎样回复差评大全",
+        "relevant": [
+          46829,
+          127100,
+          129291,
+          221499,
+          275936,
+          297016,
+          420154,
+          420155
+        ],
+        "vector_top3": [
+          221499,
+          46829,
+          275936
+        ],
+        "vector_top3_ms": 26.7,
+        "pipeline_20_rerank3": [
+          221499,
+          221499,
+          420154
+        ],
+        "pipeline_20_rerank3_ms": 2070.83
+      },
+      {
+        "qid": "6289",
+        "question": "qq会话框,有时候显个耳朵是怎么回事",
+        "relevant": [
+          111389,
+          201586,
+          405866
+        ],
+        "vector_top3": [
+          405866,
+          111389,
+          201586
+        ],
+        "vector_top3_ms": 30.81,
+        "pipeline_20_rerank3": [
+          111389,
+          201586,
+          405866
+        ],
+        "pipeline_20_rerank3_ms": 2387.9
+      },
+      {
+        "qid": "17128",
+        "question": "印度一年出口多少粮食",
+        "relevant": [
+          28482,
+          28483,
+          28484,
+          78828,
+          190627
+        ],
+        "vector_top3": [
+          28482,
+          28482,
+          78828
+        ],
+        "vector_top3_ms": 37.51,
+        "pipeline_20_rerank3": [
+          28482,
+          78828,
+          190627
+        ],
+        "pipeline_20_rerank3_ms": 2168.59
+      },
+      {
+        "qid": "552",
+        "question": "脸上青一大块是什么原因",
+        "relevant": [
+          79895,
+          150806,
+          314403,
+          392924,
+          471860
+        ],
+        "vector_top3": [
+          314403,
+          471860,
+          79895
+        ],
+        "vector_top3_ms": 22.47,
+        "pipeline_20_rerank3": [
+          471860,
+          314403,
+          79895
+        ],
+        "pipeline_20_rerank3_ms": 2080.6
+      },
+      {
+        "qid": "170",
+        "question": "对奥迪车主动安全和被动安全的认识",
+        "relevant": [
+          200622,
+          200624,
+          321997,
+          343196
+        ],
+        "vector_top3": [
+          343196,
+          200624,
+          321997
+        ],
+        "vector_top3_ms": 22.1,
+        "pipeline_20_rerank3": [
+          321997,
+          343196,
+          200624
+        ],
+        "pipeline_20_rerank3_ms": 2896.57
+      },
+      {
+        "qid": "18283",
+        "question": "atb-25是粗粒式",
+        "relevant": [
+          202570,
+          318955,
+          408366
+        ],
+        "vector_top3": [
+          533904,
+          560971,
+          533904
+        ],
+        "vector_top3_ms": 21.08,
+        "pipeline_20_rerank3": [
+          202570,
+          408366,
+          407327
+        ],
+        "pipeline_20_rerank3_ms": 3209.98
+      },
+      {
+        "qid": "215",
+        "question": "海尔s1068全自动洗衣机说明书",
+        "relevant": [
+          304,
+          131527,
+          220550,
+          262552,
+          340773
+        ],
+        "vector_top3": [
+          340773,
+          220550,
+          262552
+        ],
+        "vector_top3_ms": 29.85,
+        "pipeline_20_rerank3": [
+          340773,
+          340773,
+          2227445
+        ],
+        "pipeline_20_rerank3_ms": 2367.24
+      }
+    ]
+  },
+  "significance": {
+    "n_queries": 300,
+    "mean_delta_hit1": 0.0133,
+    "paired_t": 0.71,
+    "bootstrap_95_ci": [
+      -0.0233,
+      0.05
+    ],
+    "ci_excludes_zero": false,
+    "rerank_better": 18,
+    "rerank_worse": 14,
+    "tied": 268
+  },
+  "completed_at": "2026-09-22T08:24:06.118316+00:00"
+}

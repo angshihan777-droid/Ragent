@@ -7,6 +7,7 @@ import { store } from "../store.js";
 import { api } from "../api.js";
 import NewProjectModal from "./NewProjectModal.vue";
 import NewThreadModal from "./NewThreadModal.vue";
+import Icon from "./Icon.vue";
 
 defineEmits(["collapse"]);
 const router = useRouter();
@@ -70,32 +71,38 @@ async function removeThread(projectId, id, title) {
 
 <template>
   <aside class="sidebar">
-    <div class="brand"><span class="brand-mark">R</span><span>Ragent<small>知识工作台</small></span><button class="quiet collapse" aria-label="收起左栏" @click="$emit('collapse')">‹</button></div>
+    <div class="brand">
+      <span class="brand-mark">R</span>
+      <span class="brand-text">Ragent<small>知识工作台</small></span>
+      <button class="quiet collapse" aria-label="收起左栏" @click="$emit('collapse')"><Icon name="chevron-left" :size="18" /></button>
+    </div>
 
     <nav class="primary-nav" aria-label="工作台导航">
-      <RouterLink to="/chat" @click="store.currentThreadId = null"><span>⊕</span> 新对话</RouterLink>
-      <a class="nav-link" href="https://angshihan777-droid.github.io/Ragent/" target="_blank" rel="noopener"><span>✦</span> 使用介绍</a>
-      <RouterLink to="/documents"><span>▧</span> 项目资料</RouterLink>
-      <RouterLink to="/library"><span>▦</span> 知识库图书馆</RouterLink>
+      <RouterLink to="/chat" @click="store.currentThreadId = null"><Icon name="message-plus" /> 新对话</RouterLink>
+      <RouterLink to="/documents"><Icon name="files" /> 项目资料</RouterLink>
+      <RouterLink to="/library"><Icon name="library" /> 知识库图书馆</RouterLink>
+      <a class="nav-link" href="https://angshihan777-droid.github.io/Ragent/" target="_blank" rel="noopener"><Icon name="book" /> 使用介绍</a>
     </nav>
     <div class="section-head">
       <span>项目</span>
-      <button class="mini" title="新建项目" @click="showNewProject = true">+</button>
+      <button class="quiet mini" title="新建项目" aria-label="新建项目" @click="showNewProject = true"><Icon name="plus" :size="15" /></button>
     </div>
     <p v-if="error" class="nav-error" role="alert">{{ error }}</p>
     <ul class="project-tree" aria-label="项目与会话">
       <li v-for="p in store.projects" :key="p.id" class="project-node">
         <div class="project-row" :class="{ active: p.id === store.currentProjectId }">
-          <button class="quiet expander" :aria-label="(expanded[p.id] ? '收起项目 ' : '展开项目 ') + p.name" :aria-expanded="!!expanded[p.id]" @click="attempt(() => toggleProject(p.id))">{{ expanded[p.id] ? '▾' : '▸' }}</button>
-          <button class="quiet name" :title="p.name" @click="attempt(() => pickProject(p.id))">{{ p.name }}</button>
-          <button class="quiet mini" :aria-label="'在 ' + p.name + ' 新建会话'" :disabled="store.projectLoading" @click="attempt(() => newThread(p.id))">+</button>
-          <button class="quiet del" :aria-label="'删除项目 ' + p.name" @click="attempt(() => removeProject(p.id, p.name))">×</button>
+          <button class="quiet expander" :aria-label="(expanded[p.id] ? '收起项目 ' : '展开项目 ') + p.name" :aria-expanded="!!expanded[p.id]" @click="attempt(() => toggleProject(p.id))">
+            <Icon :name="expanded[p.id] ? 'chevron-down' : 'chevron-right'" :size="14" />
+          </button>
+          <button class="quiet name" :title="p.name" @click="attempt(() => pickProject(p.id))"><Icon name="folder" :size="14" /><span class="truncate">{{ p.name }}</span></button>
+          <button class="quiet mini" :aria-label="'在 ' + p.name + ' 新建会话'" :disabled="store.projectLoading" @click="attempt(() => newThread(p.id))"><Icon name="plus" :size="14" /></button>
+          <button class="quiet del" :aria-label="'删除项目 ' + p.name" @click="attempt(() => removeProject(p.id, p.name))"><Icon name="x" :size="14" /></button>
         </div>
         <ul v-if="expanded[p.id]" class="thread-tree" :aria-label="p.name + ' 的会话'">
           <li v-if="loadingProjects[p.id]" class="empty">加载会话…</li>
           <li v-for="t in store.threadsByProject[p.id] || []" :key="t.id" class="thread-row" :class="{ active: p.id === store.currentProjectId && t.id === store.currentThreadId }">
-            <button class="quiet name" :title="t.title" :aria-current="p.id === store.currentProjectId && t.id === store.currentThreadId ? 'page' : undefined" @click="attempt(() => pickThread(p.id, t.id))">{{ t.title }}</button>
-            <button class="quiet del" :aria-label="'删除会话 ' + t.title" @click="attempt(() => removeThread(p.id, t.id, t.title))">×</button>
+            <button class="quiet name" :title="t.title" :aria-current="p.id === store.currentProjectId && t.id === store.currentThreadId ? 'page' : undefined" @click="attempt(() => pickThread(p.id, t.id))"><span class="truncate">{{ t.title }}</span></button>
+            <button class="quiet del" :aria-label="'删除会话 ' + t.title" @click="attempt(() => removeThread(p.id, t.id, t.title))"><Icon name="x" :size="13" /></button>
           </li>
           <li v-if="!loadingProjects[p.id] && !store.threadsByProject[p.id]?.length" class="empty">暂无会话，点项目旁 + 新建</li>
         </ul>
@@ -104,7 +111,10 @@ async function removeThread(projectId, id, title) {
     </ul>
 
     <div class="footer">
-      <RouterLink to="/config" class="settings-link"><span>⚙ 模型配置</span><small>{{ store.llm.model || '未配置' }}</small></RouterLink>
+      <RouterLink to="/config" class="settings-link">
+        <span class="sl-label"><Icon name="settings" :size="15" /> 模型配置</span>
+        <small :class="{ unset: !store.llm.model }">{{ store.llm.model || '未配置' }}</small>
+      </RouterLink>
       <div class="workspace-label">个人工作空间 · 单知识库助手</div>
     </div>
 
@@ -114,10 +124,45 @@ async function removeThread(projectId, id, title) {
 </template>
 
 <style scoped>
-.sidebar { width: 264px; flex-shrink: 0; background: #f7f9f8; border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 24px 14px 14px; min-height: 0; overflow: auto; }
-.brand { display: flex; align-items: center; gap: 10px; padding: 0 8px 27px; font-size: 21px; font-weight: 650; color: var(--ink); }.brand small { display: block; font-weight: 400; font-size: 10px; color: var(--muted); letter-spacing: 1px; margin-top: 3px; }.brand-mark { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; background: var(--accent); color: #fff; }.collapse { margin-left: auto; font-size: 21px; padding: 3px 8px; }
-.primary-nav { display: grid; gap: 5px; margin-bottom: 22px; }.primary-nav a { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); padding: 11px 13px; border-radius: 8px; font-size: 13px; }.primary-nav a span { font-size: 18px; width: 20px; }.primary-nav a:hover { background: #edf1ee; }.primary-nav .router-link-active { background: var(--accent-soft); color: var(--accent-d); font-weight: 650; }
-.section-head { display: flex; align-items: center; justify-content: space-between; color: var(--faint); font-size: 11px; padding: 0 10px 10px; }.mini { background: transparent; color: var(--muted); width: 23px; height: 23px; border-radius: 6px; padding: 0; font-size: 17px; }.mini:hover { color: var(--accent); background: var(--accent-soft); }
-.project-tree, .thread-tree { list-style: none; margin: 0; padding: 0; }.project-tree { padding-bottom: 20px; }.project-node { margin-bottom: 8px; }.project-row, .thread-row { display: flex; align-items: center; gap: 2px; border-radius: 7px; }.project-row.active { background: #edf1ee; }.thread-row.active { background: var(--accent-soft); }.thread-row.active .name { color: var(--accent-d); }.thread-tree { margin: 5px 0 10px 17px; padding-left: 9px; border-left: 1px solid var(--border); }.name { flex: 1; min-width: 0; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 9px 5px; font-size: 12px; }.expander { padding: 5px 7px; }.del { padding: 5px; color: var(--muted); }.del:hover { color: #ad3737; }.empty { padding: 8px 6px; font-size: 11px; color: var(--faint); }.nav-error { color: #a83232; font-size: 12px; }
-.footer { margin-top: auto; padding: 15px 5px 2px; border-top: 1px solid var(--line); }.settings-link { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--text); text-decoration: none; font-size: 12px; padding: 8px 3px; }.settings-link small { color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 110px; font-size: 10px; }.workspace-label { font-size: 10px; color: var(--faint); padding: 12px 3px 2px; }
+.sidebar { width: 264px; flex-shrink: 0; background: var(--surface-2); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: var(--s-4) var(--s-3) var(--s-3); min-height: 0; overflow: auto; }
+
+.brand { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-2) var(--s-2) var(--s-5); }
+.brand-text { font-size: var(--fs-body); font-weight: 600; color: var(--ink); line-height: 1.2; }
+.brand-text small { display: block; font-weight: 400; font-size: var(--fs-xs); color: var(--muted); letter-spacing: 0.04em; margin-top: 2px; }
+.brand-mark { display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--r-md); background: var(--brand); color: #fff; font-size: var(--fs-body); font-weight: 600; flex-shrink: 0; }
+.collapse { margin-left: auto; padding: var(--s-1); }
+
+.primary-nav { display: grid; gap: 2px; margin-bottom: var(--s-5); }
+.primary-nav a { display: flex; align-items: center; gap: var(--s-3); text-decoration: none; color: var(--text); padding: var(--s-2) var(--s-3); border-radius: var(--r-md); font-size: var(--fs-sm); transition: background var(--ease), color var(--ease); }
+.primary-nav a:hover { background: var(--surface-3); color: var(--ink); }
+.primary-nav .router-link-active { background: var(--brand-soft); color: var(--brand-ink); font-weight: 500; }
+
+.section-head { display: flex; align-items: center; justify-content: space-between; color: var(--faint); font-size: var(--fs-xs); font-weight: 500; letter-spacing: 0.04em; padding: 0 var(--s-2) var(--s-2); }
+.mini { width: 24px; height: 24px; border-radius: var(--r-sm); padding: 0; }
+.mini:hover:not(:disabled) { color: var(--brand-ink); background: var(--brand-soft); }
+
+.project-tree, .thread-tree { list-style: none; margin: 0; padding: 0; }
+.project-tree { padding-bottom: var(--s-4); }
+.project-node { margin-bottom: 2px; }
+.project-row, .thread-row { display: flex; align-items: center; gap: 1px; border-radius: var(--r-md); }
+.project-row:hover, .thread-row:hover { background: var(--surface-3); }
+.project-row.active { background: var(--surface-3); }
+.thread-row.active { background: var(--brand-soft); }
+.thread-row.active .name { color: var(--brand-ink); font-weight: 500; }
+.thread-tree { margin: 2px 0 var(--s-2) var(--s-4); padding-left: var(--s-2); border-left: 1px solid var(--border); }
+.name { flex: 1; min-width: 0; justify-content: flex-start; gap: var(--s-2); text-align: left; padding: 7px var(--s-2); font-size: var(--fs-sm); }
+.expander { padding: var(--s-1); }
+.del { padding: var(--s-1); opacity: 0; transition: opacity var(--ease), color var(--ease); }
+.project-row:hover .del, .thread-row:hover .del, .del:focus-visible { opacity: 1; }
+.del:hover:not(:disabled) { color: var(--danger); background: var(--danger-soft); }
+.empty { padding: var(--s-2); font-size: var(--fs-xs); color: var(--faint); line-height: 1.6; }
+.nav-error { color: var(--danger); font-size: var(--fs-xs); padding: 0 var(--s-2) var(--s-2); margin: 0; }
+
+.footer { margin-top: auto; padding-top: var(--s-3); border-top: 1px solid var(--border); }
+.settings-link { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); color: var(--text); text-decoration: none; font-size: var(--fs-sm); padding: var(--s-2); border-radius: var(--r-md); transition: background var(--ease); }
+.settings-link:hover { background: var(--surface-3); }
+.sl-label { display: inline-flex; align-items: center; gap: var(--s-2); }
+.settings-link small { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 96px; font-size: var(--fs-xs); }
+.settings-link small.unset { color: var(--danger); }
+.workspace-label { font-size: var(--fs-xs); color: var(--faint); padding: var(--s-2) var(--s-2) 0; }
 </style>

@@ -8,6 +8,15 @@ const messages = ref([]);      // {role, content, pending, error, sources}
 const input = ref("");
 const sending = ref(false);
 const listEl = ref(null);
+// 流式期间是否自动贴底。用户一旦往上翻就交还滚动控制权，
+// 否则每来一个 token 都被拽回底部，根本没法回看前文。
+const stickToBottom = ref(true);
+const NEAR_BOTTOM = 80;
+function onListScroll() {
+  const el = listEl.value;
+  if (!el) return;
+  stickToBottom.value = el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM;
+}
 
 let viewVersion = 0;
 let streamController;
@@ -36,9 +45,15 @@ async function startConversation() {
 
 const STEP_ICONS = { context: "01", decide: "02", retrieve: "03", evidence: "04", rewrite: "05", answer: "06", validate: "07" };
 
-async function scrollToBottom() {
+async function scrollToBottom(force = false) {
+  if (!force && !stickToBottom.value) return;
   await nextTick();
   if (listEl.value) listEl.value.scrollTop = listEl.value.scrollHeight;
+}
+// 供"回到底部"浮标调用：强制贴底并重新开启跟随。
+function jumpToBottom() {
+  stickToBottom.value = true;
+  scrollToBottom(true);
 }
 
 function resetPanel() {
@@ -53,6 +68,7 @@ watch(
     sending.value = false;
     input.value = "";
     messages.value = []; resetPanel(); historyError.value = "";
+    stickToBottom.value = true;
     historyLoading.value = !!id;
     if (!id) return;
     try {
@@ -65,7 +81,7 @@ watch(
         steps.value = (latest.steps || []).map(step => ({ ...step, icon: STEP_ICONS[step.node] || "·" }));
         runState.value = latest.error ? "error" : "done";
       }
-      await scrollToBottom();
+      await scrollToBottom(true);
     } catch (e) {
       if (version === viewVersion) historyError.value = "加载对话失败：" + e.message;
     } finally {
@@ -80,6 +96,13 @@ function send() {
   if (!text || sending.value || historyLoading.value || !thread.value) return;
   input.value = "";
   sendText(text);
+}
+
+// 主动中断本轮生成：abort 掉 SSE 读取，把占位气泡落成"已停止"。
+// 已有的 AbortController 原来只在切换会话/卸载时用，这里暴露给 UI。
+function stop() {
+  if (!sending.value) return;
+  streamController?.abort();
 }
 
 // run_id 标识每次节点执行，补检索不会覆盖第一轮步骤。
@@ -102,7 +125,9 @@ async function sendText(text) {
   messages.value.push({ role: "user", content: text });
   const reply = reactive({ role: "assistant", content: "", pending: true, error: false, sources: [] });
   messages.value.push(reply);
-  await scrollToBottom();
+  // 自己发的消息一定要贴底，不受之前的手动上翻影响。
+  stickToBottom.value = true;
+  await scrollToBottom(true);
 
   try {
     const { request_id } = await api.createRequest(threadId, text);
@@ -138,17 +163,25 @@ async function sendText(text) {
   } catch (e) {
     if (version !== viewVersion) return;
     reply.pending = false;
-    reply.error = true;
-    reply.content = "请求出错: " + e.message;
-    runState.value = "error";
+    if (e.name === "AbortError") {
+      // 用户主动停止：保留已生成的内容，不当成错误红框。
+      reply.content = reply.content ? reply.content + "\n\n_（已停止生成）_" : "已停止生成。";
+      runState.value = "done";
+    } else {
+      reply.error = true;
+      reply.content = "请求出错: " + e.message;
+      runState.value = "error";
+    }
   } finally {
     if (version === viewVersion) {
-      if (runState.value === "error") for (const step of steps.value) if (step.status === "running") step.status = "error";
+      // 收尾：没有 running 状态残留的转圈图标。失败标红，中断标未完成。
+      const leftover = runState.value === "error" ? "error" : "idle";
+      for (const step of steps.value) if (step.status === "running") step.status = leftover;
       sending.value = false;
       await scrollToBottom();
     }
   }
 }
 
-return { messages, input, sending, listEl, historyError, historyLoading, steps, sources, tracing, runState, thread, creatingThread, startConversation, send, sendText };
+return { messages, input, sending, listEl, historyError, historyLoading, steps, sources, tracing, runState, thread, creatingThread, startConversation, send, sendText, stop, stickToBottom, onListScroll, jumpToBottom };
 }
