@@ -7,7 +7,12 @@ dist/
 # 前端本地 dev 日志，不入库
 web/dev.out.log
 web/dev.err.log
-_shot.png
-
 web/vite.out.log
 web/vite.err.log
+
+# 页面对比截图等本地临时产物，不入库
+_shot.png
+_c_*.png
+
+# 简历素材，仅本地保留，不公开
+RESUME.md
