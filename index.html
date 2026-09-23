@@ -1,0 +1,1504 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Ragent：面向项目资料的单知识库问答 Agent。LangGraph 编排先决策再检索，pgvector 召回 + cross-encoder 重排，三元组 FIFO 串行与租约恢复保证并发下不乱序、不丢任务。">
+<title>Ragent · 项目知识库助手</title>
+<style>
+/* ===== 设计 token 与 web/src/styles.css 同源：同一套灰阶、同一档绿、同一套圆角/字阶 ===== */
+:root{
+  /* 中性色阶 */
+  --n-0:#ffffff; --n-25:#fbfcfb; --n-50:#f6f8f7; --n-100:#eef1ef; --n-200:#e3e8e5;
+  --n-300:#cbd3ce; --n-400:#9aa49d; --n-500:#6f7a73; --n-600:#4d5751;
+  --n-700:#333c37; --n-800:#212925; --n-900:#151b17;
+  /* 语义文字 */
+  --ink:var(--n-900); --text:var(--n-700); --muted:var(--n-500); --faint:#939d97;
+  /* 品牌绿 3 档：整页只有一个绿，不再有 btn / accent 两套 */
+  --brand-soft:#e8f4ed; --brand-line:#bfe0cd; --brand:#1f9d55; --brand-ink:#14703b;
+  --accent:var(--brand); --accent-d:var(--brand-ink); --accent-soft:var(--brand-soft);
+  --btn:var(--brand); --btn-h:var(--brand-ink);
+  /* 状态 */
+  --danger-soft:#fdf0ee; --danger-line:#f4d5cf; --danger:#c0442e; --danger-ink:#97331f;
+  --err:var(--danger);
+  /* 表面 */
+  --bg:var(--n-0); --bg-soft:var(--n-50); --surface-3:var(--n-100);
+  --border:var(--n-200); --line:var(--n-100);
+  /* 圆角 4 档 */
+  --r-sm:6px; --r-md:10px; --r-lg:14px; --r-xl:20px; --r-full:999px;
+  /* 间距 4px 网格 */
+  --s-1:4px; --s-2:8px; --s-3:12px; --s-4:16px; --s-5:24px; --s-6:32px; --s-7:48px;
+  /* 字阶 5 级 */
+  --fs-display:28px; --fs-title:18px; --fs-body:15px; --fs-sm:13px; --fs-xs:12px;
+  /* 阴影 */
+  --shadow-sm:0 1px 2px rgba(20,28,23,.05);
+  --shadow-md:0 4px 14px rgba(20,28,23,.07);
+  --shadow:0 16px 44px rgba(20,28,23,.12);
+  --shadow-lg:var(--shadow);
+  --ring:0 0 0 3px rgba(31,157,85,.16);
+  --ease:.16s cubic-bezier(.32,.72,0,1);
+  --hero:#151b17; --hero-2:#212925; --hero-muted:#9aa69e;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--text);
+  font-family:"Inter","Segoe UI",-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:var(--fs-body);font-weight:400;line-height:1.6;
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;overflow-x:hidden}
+h1,h2,h3,h4,h5{color:var(--ink);font-weight:600;letter-spacing:-.015em;line-height:1.3}
+code,.mono{font-family:"SFMono-Regular",Consolas,Menlo,monospace}
+a{color:inherit;text-decoration:none}
+strong,b{font-weight:600;color:var(--ink)}
+svg{flex:none}
+/* 统一图标：描边跟随 currentColor，尺寸靠 width/height，不再用几何字符 */
+.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ic-sm{width:14px;height:14px}
+.ic-xs{width:12px;height:12px;stroke-width:1.8}
+.ic-lg{width:20px;height:20px}
+.wrap{width:100%;max-width:1080px;margin:0 auto;padding:0 var(--s-5)}
+section{padding:var(--s-7) 0}
+section,[id]{scroll-margin-top:72px}
+@media(min-width:760px){section{padding:76px 0}}
+.sec-head{text-align:center;max-width:620px;margin:0 auto var(--s-6)}
+.sec-head .kicker{font-size:var(--fs-xs);font-weight:600;letter-spacing:.14em;color:var(--brand-ink);text-transform:uppercase;margin-bottom:var(--s-2)}
+h2{font-size:clamp(22px,3vw,30px);margin-bottom:var(--s-2)}
+.sec-head p{color:var(--muted);font-size:var(--fs-sm);line-height:1.75}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto}}
+
+/* ===== 顶栏 ===== */
+.topnav{position:sticky;top:0;z-index:60;background:rgba(255,255,255,.82);backdrop-filter:saturate(1.4) blur(12px);border-bottom:1px solid var(--line)}
+.topnav .inner{max-width:1080px;margin:0 auto;padding:var(--s-3) var(--s-5);display:flex;align-items:center;gap:var(--s-5)}
+.logo{display:flex;align-items:center;gap:var(--s-2);font-weight:600;font-size:var(--fs-body);color:var(--ink)}
+.logo .mk{width:28px;height:28px;border-radius:var(--r-md);background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:600;font-size:15px}
+.topnav nav{display:flex;gap:var(--s-5)}
+.topnav nav a{color:var(--muted);font-size:var(--fs-sm);padding:var(--s-1) 0;border-bottom:2px solid transparent;transition:color var(--ease),border-color var(--ease)}
+.topnav nav a:hover,.topnav nav a.active{color:var(--ink);border-color:var(--brand)}
+.spacer{flex:1}
+.cta-live{display:inline-flex;align-items:center;gap:var(--s-2);background:var(--brand);color:#fff;font-weight:500;padding:var(--s-2) var(--s-4);border-radius:var(--r-md);font-size:var(--fs-sm);transition:background var(--ease)}
+.cta-live:hover{background:var(--brand-ink)}
+.cta-live .live{width:6px;height:6px;border-radius:50%;background:#bff5d4;animation:pulse 1.8s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(191,245,212,.7)}70%{box-shadow:0 0 0 6px rgba(191,245,212,0)}100%{box-shadow:0 0 0 0 rgba(191,245,212,0)}}
+@media(max-width:760px){.topnav nav{display:none}}
+
+/* ===== Hero：只留 标题 / 一句话 / 行动 三层 ===== */
+.hero{padding:var(--s-7) 0 var(--s-6);text-align:center}
+@media(min-width:760px){.hero{padding:88px 0 72px}}
+.hero .wrap{max-width:780px}
+.hero .eyebrow{display:inline-flex;align-items:center;gap:var(--s-2);margin-bottom:var(--s-5);
+  background:var(--brand-soft);border:1px solid var(--brand-line);color:var(--brand-ink);
+  border-radius:var(--r-full);padding:5px var(--s-3);font-size:var(--fs-xs);font-weight:500}
+.hero .eyebrow .live{width:6px;height:6px;border-radius:50%;background:var(--brand);animation:pulse2 1.8s ease-in-out infinite}
+.hero h1{font-size:clamp(34px,5.6vw,56px);font-weight:600;letter-spacing:-.03em;color:var(--ink);line-height:1.12;margin-bottom:var(--s-4);text-wrap:balance}
+.hero h1 em{font-style:normal;color:var(--brand)}
+.hero p.lead{font-size:clamp(15px,1.7vw,18px);color:var(--muted);line-height:1.7;margin:0 auto var(--s-6);max-width:56ch;text-wrap:pretty}
+.hero .cta{display:flex;gap:var(--s-3);flex-wrap:wrap;justify-content:center;align-items:center}
+.hero .cta a{display:inline-flex;align-items:center;gap:var(--s-2);padding:11px var(--s-5);border-radius:var(--r-md);font-weight:500;font-size:var(--fs-sm);transition:background var(--ease),border-color var(--ease),color var(--ease)}
+.hero .cta .primary{background:var(--brand);color:#fff}
+.hero .cta .primary:hover{background:var(--brand-ink)}
+.hero .cta .ghost{border:1px solid var(--border);background:#fff;color:var(--ink)}
+.hero .cta .ghost:hover{background:var(--bg-soft);border-color:var(--n-300)}
+.hero .cta .text-link{color:var(--muted);padding:11px var(--s-2)}
+.hero .cta .text-link:hover{color:var(--ink)}
+/* 技术栈降为一行细字，不再是 5 枚彩色胶囊 */
+.hero .stack{margin-top:var(--s-6);font-size:var(--fs-xs);color:var(--faint);display:flex;flex-wrap:wrap;gap:var(--s-2) var(--s-3);justify-content:center}
+.hero .stack span{display:inline-flex;align-items:center;gap:var(--s-2)}
+.hero .stack span+span::before{content:"";width:3px;height:3px;border-radius:50%;background:var(--n-300)}
+
+/* ===== 演示区 ===== */
+#demo{background:var(--bg-soft);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.stagebar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--s-3);margin-bottom:var(--s-4)}
+.steps-nav{display:flex;gap:var(--s-2);align-items:center;flex-wrap:wrap}
+.sn{display:flex;align-items:center;gap:var(--s-2);padding:5px var(--s-3);border-radius:var(--r-full);background:#fff;
+  border:1px solid var(--border);font-size:var(--fs-xs);color:var(--muted);transition:border-color var(--ease),color var(--ease),background var(--ease)}
+.sn .idx{width:17px;height:17px;border-radius:50%;background:var(--n-300);color:#fff;display:grid;place-items:center;font-size:10px;font-weight:600}
+.sn.on{border-color:var(--brand-line);color:var(--brand-ink);background:var(--brand-soft)}
+.sn.on .idx,.sn.done .idx{background:var(--brand)}
+.sn.done{color:var(--muted);border-color:var(--brand-line)}
+.steps-nav .arw{color:var(--n-300);display:grid;place-items:center}
+.controls{display:flex;gap:var(--s-2)}
+.btn{display:inline-flex;align-items:center;gap:var(--s-2);background:#fff;border:1px solid var(--border);color:var(--ink);font-weight:500;padding:var(--s-2) var(--s-3);border-radius:var(--r-md);cursor:pointer;font-size:var(--fs-sm);font-family:inherit;transition:background var(--ease),border-color var(--ease),color var(--ease)}
+.btn:hover{background:var(--bg-soft);border-color:var(--n-300)}
+.btn.primary{background:var(--n-800);color:#fff;border-color:var(--n-800)}
+.btn.primary:hover{background:var(--n-900);border-color:var(--n-900);color:#fff}
+.appwin{background:#fff;border:1px solid var(--border);border-radius:var(--r-xl);box-shadow:var(--shadow);overflow:hidden}
+.winbar{display:flex;align-items:center;gap:var(--s-2);padding:var(--s-3) var(--s-4);background:var(--bg-soft);border-bottom:1px solid var(--line)}
+.dot3{width:9px;height:9px;border-radius:50%}
+.dot3.r{background:#ec6a5e}.dot3.y{background:#f4bf4f}.dot3.g{background:#61c554}
+.wintitle{margin-left:var(--s-2);color:var(--faint);font-size:var(--fs-xs)}
+/* 演示窗口与对话图并排：右边跟着左边变化 */
+#demo .wrap{max-width:1360px}
+#demo .sec-head{margin-bottom:30px}
+.pair{display:grid;grid-template-columns:minmax(0,2.3fr) minmax(0,1fr);gap:30px;align-items:stretch}
+.pair-r{background:#fff;border:1px solid var(--border);border-radius:var(--r-xl);box-shadow:var(--shadow-md);padding:var(--s-4) var(--s-5);position:sticky;top:74px}
+.rp-title{display:inline-flex;align-items:center;gap:var(--s-2);font-size:var(--fs-xs);font-weight:600;color:var(--brand-ink);letter-spacing:.06em;text-transform:uppercase;margin-bottom:var(--s-2)}
+.rp-title .d{width:7px;height:7px;border-radius:50%;background:var(--brand)}
+.pair-r h4{font-size:var(--fs-title);margin-bottom:var(--s-1)}
+.pair-r .desc{font-size:var(--fs-xs);color:var(--muted);line-height:1.75;min-height:44px;margin-bottom:var(--s-4)}
+.pair-r .flow-card{max-width:none;border:none;box-shadow:none;padding:0;margin:0}
+.pair-r .say-list[hidden]{display:none}
+.pair-r .flow-card svg{max-width:520px;margin:0 auto}
+.pair-ctl{margin-top:16px;justify-content:flex-end}
+@media(min-width:1081px){
+  .pair-l>.stagebar{height:34px;margin-bottom:16px}
+  .pair-r{display:flex;flex-direction:column;overflow:hidden}
+  .pair-r .flow-card{flex:1;min-height:0;display:flex;align-items:stretch;justify-content:center;padding:2px 0}
+  .pair-r .flow-card svg{width:100%;height:100%;max-width:100%;max-height:100%;margin:0}
+  .pair-ctl{padding-top:16px;border-top:1px solid var(--line)}
+}
+@media(max-width:1080px){
+  .pair{grid-template-columns:1fr;gap:20px}
+  .pair-r{position:static}
+  /* 堆叠后容器不再由左栏撑高，图按宽度定尺寸，不再被拉伸留白 */
+  .pair-r .flow-card{display:block}
+  .pair-r .flow-card svg{max-width:560px;margin:0 auto;height:auto}
+}
+/* 三栏：左 264px 取自 Sidebar.vue，右 320px 取自 usePreference 默认值（落地页按比例压缩） */
+.app3{display:grid;grid-template-columns:196px 1fr 256px;height:860px;position:relative}
+.app3 .col{overflow:hidden;display:flex;flex-direction:column;min-width:0}
+@media(max-width:940px){
+  .app3{grid-template-columns:1fr;height:auto}
+  .app3 .col{max-height:none}
+  .col-side{border-right:none;border-bottom:1px solid var(--line)}
+  .col-mid{min-height:360px}
+  .col-right{border-left:none;border-top:1px solid var(--line)}
+}
+/* 左栏 */
+.chint,.doc-hint{font-size:var(--fs-xs)}
+.col-side{background:var(--bg-soft);border-right:1px solid var(--line);padding:var(--s-4) var(--s-3) var(--s-3);overflow-y:auto}
+.s-brand{display:flex;align-items:center;gap:var(--s-2);padding:0 var(--s-1) var(--s-4);font-size:var(--fs-body);font-weight:600;color:var(--ink)}
+.s-brand .mk{width:30px;height:30px;border-radius:var(--r-md);background:var(--brand);color:#fff;display:grid;place-items:center;font-size:15px}
+.s-brand small{display:block;font-weight:400;font-size:10px;color:var(--faint);letter-spacing:.08em;margin-top:2px}
+.s-nav{display:flex;align-items:center;gap:var(--s-2);padding:var(--s-2) var(--s-2);border-radius:var(--r-sm);font-size:var(--fs-xs);color:var(--text);transition:background var(--ease),color var(--ease)}
+.s-nav>svg{color:var(--muted)}
+.s-nav.on{background:var(--surface-3);color:var(--ink);font-weight:500}
+.s-nav.on>svg{color:var(--brand)}
+.s-nav.hot{box-shadow:inset 0 0 0 1.5px var(--brand-line);background:var(--brand-soft);color:var(--brand-ink)}
+.s-nav.hot>svg{color:var(--brand)}
+.s-sec{display:flex;align-items:center;justify-content:space-between;color:var(--faint);font-size:11px;padding:var(--s-4) var(--s-2) var(--s-2);letter-spacing:.04em}
+.s-proj{display:flex;align-items:center;gap:var(--s-1);padding:0 var(--s-1);border-radius:var(--r-sm);transition:background var(--ease)}
+.s-proj.on{background:var(--surface-3)}
+.s-proj.hot{box-shadow:inset 0 0 0 1.5px var(--brand-line);background:var(--brand-soft)}
+.s-proj .arw{color:var(--muted);margin:var(--s-2) var(--s-1)}
+.s-proj .nm{flex:1;min-width:0;font-size:var(--fs-xs);color:var(--ink);font-weight:500;padding:var(--s-2) var(--s-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s-proj .mini{color:var(--faint);margin:var(--s-2) var(--s-1)}
+.s-threads{margin:var(--s-1) 0 var(--s-2) 16px;padding-left:var(--s-2);border-left:1px solid var(--border)}
+.s-thread{display:flex;align-items:center;border-radius:var(--r-sm);font-size:var(--fs-xs);color:var(--text);padding:var(--s-2) var(--s-1)}
+.s-thread.on{background:var(--brand-soft);color:var(--brand-ink);font-weight:500}
+.s-foot{margin-top:auto;padding:var(--s-2) var(--s-1) 2px;border-top:1px solid var(--border)}
+.s-cfg{display:flex;align-items:center;justify-content:space-between;gap:var(--s-2);padding:var(--s-2) var(--s-1);border-radius:var(--r-sm);font-size:var(--fs-xs);color:var(--text);transition:box-shadow var(--ease),background var(--ease)}
+.s-cfg>span{display:inline-flex;align-items:center;gap:var(--s-2)}
+.s-cfg small{color:var(--faint);font-size:10px;max-width:92px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.s-cfg.hot{box-shadow:inset 0 0 0 1.5px var(--brand-line);background:var(--brand-soft)}
+.s-workspace{font-size:10px;color:var(--faint);padding:var(--s-2) var(--s-1) 2px}
+/* 中栏 */
+.col-mid{background:#fff}
+.mid-head{display:flex;align-items:center;justify-content:space-between;gap:var(--s-2);padding:var(--s-4) var(--s-5);border-bottom:1px solid var(--line)}
+.mid-head .crumb{font-size:11px;color:var(--muted)}
+.mid-head .crumb i{font-style:normal;color:var(--faint)}
+.mid-head h4{margin:var(--s-1) 0 0;font-size:var(--fs-body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mid-head .acts{display:flex;gap:var(--s-1);flex:none}
+.mid-head .acts span{display:inline-flex;align-items:center;gap:var(--s-1);font-size:var(--fs-xs);color:var(--muted);padding:var(--s-1) var(--s-2);border-radius:var(--r-sm)}
+.mid-body{flex:1;min-height:0;overflow-y:auto;padding:var(--s-5);display:flex;flex-direction:column}
+.mid-inner{max-width:820px;margin:auto;width:100%}
+/* 欢迎态：与 ChatWelcome.vue 一致 —— 实心品牌方块，无装饰星，无 eyebrow */
+.welcome{text-align:center;padding:var(--s-1) 0;width:min(420px,100%);margin:0 auto}
+.welcome .mark{width:48px;height:48px;margin:0 auto var(--s-4);background:var(--brand);color:#fff;
+  border-radius:var(--r-lg);font-size:22px;font-weight:600;display:grid;place-content:center}
+.welcome h1{font-size:clamp(22px,2.4vw,28px);font-weight:600;letter-spacing:-.02em;margin:0 0 var(--s-3)}
+.welcome .desc{font-size:var(--fs-sm);line-height:1.8;color:var(--muted);margin:0 auto var(--s-5);max-width:40ch}
+.welcome .start-card{border:1px solid var(--border);border-radius:var(--r-lg);padding:var(--s-4);background:#fff;text-align:left;box-shadow:var(--shadow-sm)}
+.welcome .project-line{display:flex;align-items:center;gap:var(--s-3);margin-bottom:var(--s-4)}
+.welcome .project-icon{background:var(--brand-soft);width:34px;height:34px;display:grid;place-items:center;border-radius:var(--r-md);color:var(--brand-ink);flex:none}
+.welcome .project-line strong{font-size:var(--fs-sm);font-weight:600;overflow-wrap:anywhere;color:var(--ink)}
+.welcome .project-line small{display:block;color:var(--muted);font-size:var(--fs-xs);margin-top:2px}
+.welcome .start-card button{width:100%;display:flex;align-items:center;justify-content:space-between;font-size:var(--fs-sm);background:var(--brand);color:#fff;border:none;border-radius:var(--r-md);padding:10px var(--s-4);font-family:inherit;font-weight:500;cursor:default}
+.welcome .history-note{color:var(--faint);font-size:11px;margin-top:var(--s-4)}
+/* 对话空态 */
+.convo-empty{text-align:center;margin:6vh auto var(--s-6);color:var(--muted);font-size:var(--fs-sm);line-height:1.8}
+.convo-empty>svg{color:var(--brand);width:24px;height:24px}
+.convo-empty h2{color:var(--ink);font-size:var(--fs-title);font-weight:600;margin:var(--s-2) 0}
+/* 消息 */
+.mrow{display:flex;margin-bottom:var(--s-5)}
+.mrow.user{justify-content:flex-end}
+.mcol{display:flex;flex-direction:column;min-width:0;max-width:100%}
+.mrow.user .mcol{max-width:85%}
+.author{font-size:var(--fs-xs);color:var(--muted);display:flex;align-items:center;gap:var(--s-2);margin-bottom:var(--s-2)}
+.author span.i{display:grid;place-items:center;width:24px;height:24px;border-radius:var(--r-sm);background:var(--brand-soft);color:var(--brand)}
+.mbub{line-height:1.85;font-size:var(--fs-body);overflow-wrap:anywhere;color:var(--text)}
+.mrow.user .mbub{background:var(--surface-3);border:1px solid var(--border);border-radius:var(--r-lg);padding:var(--s-2) var(--s-4);color:var(--ink)}
+.mrow.assistant .mbub{padding-left:2px}
+.mbub.streaming::after{content:"";display:inline-block;width:2px;height:1em;background:var(--brand);vertical-align:-2px;margin-left:2px}
+.mbub .cite{display:inline-block;background:var(--brand-soft);color:var(--brand-ink);border-radius:var(--r-sm);padding:0 5px;font-size:var(--fs-xs);font-weight:500;margin:0 1px}
+.mbub .dots{color:var(--faint)}
+.mbub .srcs{margin-top:var(--s-3);font-size:var(--fs-xs);color:var(--muted)}
+/* 输入区：取自 ChatComposer.vue */
+.composer-area{width:100%;padding:var(--s-3) 0 0;margin-top:auto}
+.composer{background:#fff;border:1px solid var(--border);border-radius:var(--r-xl);padding:var(--s-3) var(--s-4);box-shadow:var(--shadow-sm);transition:border-color var(--ease),box-shadow var(--ease)}
+.composer.focus{border-color:var(--brand);box-shadow:var(--ring)}
+.composer textarea{border:0;background:transparent;padding:var(--s-2) var(--s-1);resize:none;min-height:52px;font:inherit;
+  font-size:var(--fs-body);line-height:1.7;color:var(--ink);width:100%;outline:none}
+.composer .ph{color:var(--faint);font-size:var(--fs-body);min-height:52px;padding:var(--s-2) var(--s-1);line-height:1.7}
+.composer .ph.typed{color:var(--ink)}
+.composer-bottom{display:flex;justify-content:space-between;align-items:center;gap:var(--s-2)}
+.scope{display:inline-flex;align-items:center;gap:var(--s-2);font-size:var(--fs-xs);color:var(--muted);padding:var(--s-1) var(--s-2);border-radius:var(--r-sm);background:var(--bg-soft);max-width:80%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.send{width:32px;height:32px;border-radius:var(--r-md);background:var(--brand);color:#fff;border:none;display:grid;place-items:center;font-family:inherit;flex:none}
+.send.dim{background:var(--surface-3);color:var(--faint)}
+.composer .hint{text-align:center;color:var(--faint);font-size:11px;margin:var(--s-2) 0 2px}
+.mid-comp{padding:0 var(--s-5) var(--s-4)}
+/* 右栏：取自 ExecutionPanel.vue */
+.col-right{background:var(--bg-soft);border-left:1px solid var(--line);padding:var(--s-3);gap:var(--s-3);overflow-y:auto}
+.rp-card{background:#fff;border:1px solid var(--border);border-radius:var(--r-lg);padding:var(--s-4)}
+.rp-card.flow{flex:1 0 auto}
+.rp-head{display:flex;align-items:center;justify-content:space-between;gap:var(--s-2);margin-bottom:var(--s-3)}
+.rp-head h5{font-size:var(--fs-sm);color:var(--ink);font-weight:600}
+.badge{display:inline-flex;align-items:center;gap:var(--s-1);font-size:var(--fs-xs);font-weight:500;padding:3px var(--s-2);border-radius:var(--r-full);background:var(--surface-3);color:var(--muted)}
+.badge.running{background:var(--brand-soft);color:var(--brand-ink)}
+.badge.done{background:var(--brand-soft);color:var(--brand-ink)}
+.badge.error{background:var(--danger-soft);color:var(--danger-ink)}
+.badge-dot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:pulse2 1.2s ease-in-out infinite}
+@keyframes pulse2{0%,100%{opacity:.35}50%{opacity:1}}
+.plan-title{display:flex;align-items:flex-start;gap:var(--s-2);padding:2px 0 var(--s-3)}
+.plan-title .pt-ico{width:28px;height:28px;flex:none;display:grid;place-items:center;border-radius:var(--r-sm);background:var(--brand-soft);color:var(--brand-ink)}
+.plan-title .pt-name{font-size:var(--fs-sm);font-weight:600;color:var(--ink)}
+.plan-title .pt-sub{font-size:var(--fs-xs);color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.steps{list-style:none;margin:0;padding:var(--s-1) 0;border-top:1px solid var(--line)}
+.steps li{display:flex;align-items:center;gap:var(--s-2);padding:var(--s-2);border-radius:var(--r-sm);font-size:var(--fs-sm);color:var(--faint)}
+.steps li.done{color:var(--text)}
+.steps li.running{color:var(--brand-ink);font-weight:500;background:var(--brand-soft)}
+.steps li.error{color:var(--danger-ink)}
+.steps .ico{width:16px;height:16px;flex:none;display:grid;place-items:center}
+.steps .check{color:var(--brand)}
+.steps .dot{width:7px;height:7px;border:1.5px solid var(--n-300);border-radius:50%}
+.steps .spin{width:13px;height:13px;border:2px solid var(--brand-soft);border-top-color:var(--brand);border-radius:50%;animation:spin .7s linear infinite}
+.steps .bang{color:var(--danger)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.steps .lbl{flex:1}
+.prog-foot{margin-top:var(--s-3);padding-top:var(--s-3);border-top:1px solid var(--line);font-size:var(--fs-xs);color:var(--muted)}
+.p-empty{font-size:var(--fs-xs);color:var(--muted);line-height:1.7;margin:var(--s-1) 2px}
+.score-hint{font-size:11px;line-height:1.6;color:var(--faint);margin-bottom:var(--s-2)}
+.srcs{list-style:none;margin:0;padding:0}
+.srcs li{border:1px solid var(--border);border-radius:var(--r-md);margin-bottom:var(--s-1);background:#fff;transition:border-color var(--ease),box-shadow var(--ease)}
+.srcs li.on{border-color:var(--brand-line);box-shadow:var(--shadow-sm)}
+.src-btn{display:flex;flex-direction:column;gap:var(--s-1);width:100%;text-align:left;padding:var(--s-3);background:transparent;border:none;color:var(--text);font:inherit}
+.src-t{font-size:var(--fs-xs);font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.src-p{font-size:var(--fs-xs);color:var(--muted);line-height:1.5;overflow-wrap:anywhere}
+.src-btn .match,.src-btn .link{display:inline-flex;align-items:center;gap:var(--s-1);font-size:var(--fs-xs);color:var(--brand-ink)}
+.src-btn meter{width:100%;height:5px;accent-color:var(--brand)}
+/* 配置页：取自 ConfigPage.vue */
+.cfg-card{background:#fff;border:1px solid var(--border);border-radius:var(--r-lg);padding:var(--s-5);max-width:440px;margin:0 auto;width:100%}
+.cfg-card h2{margin:0 0 var(--s-1);font-size:var(--fs-title)}
+.cfg-card .chint{color:var(--muted);margin:0 0 var(--s-5);font-size:var(--fs-sm);line-height:1.7}
+.cfg-field+.cfg-field{margin-top:var(--s-4);padding-top:var(--s-4);border-top:1px solid var(--line)}
+.cfg-fhead{display:flex;align-items:center;justify-content:space-between;gap:var(--s-3);margin-bottom:var(--s-2)}
+.cfg-fhead label{margin:0}
+.cfg-card label{display:block;margin:0 0 var(--s-2);font-size:var(--fs-sm);font-weight:500;color:var(--ink)}
+.cfg-card small{display:block;margin-top:var(--s-2);color:var(--faint);font-size:var(--fs-xs);line-height:1.6}
+.cfg-card input,.cfg-card select{font:inherit;width:100%;padding:9px var(--s-3);border:1px solid var(--border);border-radius:var(--r-md);background:#fff;color:var(--ink);font-size:var(--fs-sm)}
+.cfg-card input.focus,.cfg-card select.focus{border-color:var(--brand);box-shadow:var(--ring);outline:none}
+.cfg-card select:disabled{opacity:.55}
+.cfg-card .actions{display:flex;justify-content:flex-end;margin-top:var(--s-4);padding-top:var(--s-4);border-top:1px solid var(--line)}
+.cfg-card .quiet{display:inline-flex;align-items:center;gap:var(--s-2);background:transparent;color:var(--muted);border:1px solid transparent;border-radius:var(--r-sm);padding:var(--s-1) var(--s-2);font:inherit;font-size:var(--fs-xs)}
+.cfg-card .primary{background:var(--brand);color:#fff;border:none;border-radius:var(--r-md);padding:9px var(--s-4);font:inherit;font-size:var(--fs-sm);font-weight:500}
+.cfg-card .primary.dim{background:var(--surface-3);color:var(--faint)}
+.cfg-msg{margin-top:var(--s-4);padding:var(--s-3) var(--s-4);border-radius:var(--r-md);font-size:var(--fs-sm);display:none;line-height:1.7}
+.cfg-msg.ok{display:block;background:var(--brand-soft);border:1px solid var(--brand-line);color:var(--brand-ink)}
+.cfg-msg.err{display:block;background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger-ink)}
+/* 资料页：取自 DocumentManager.vue */
+.doc-page{width:100%;max-width:100%;margin:0 auto;padding:0 var(--s-1)}
+.doc-page h1{font-size:var(--fs-display);letter-spacing:-.02em;margin:0}
+.doc-page .sub{color:var(--muted);font-size:var(--fs-xs);line-height:1.75;margin:var(--s-2) 0 var(--s-5)}
+.doc-toolbar{display:flex;gap:var(--s-3);align-items:center;flex-wrap:wrap}
+.doc-toolbar .search-wrap{position:relative;flex:1;min-width:150px;display:flex;align-items:center}
+.doc-toolbar .search-wrap>svg{position:absolute;left:var(--s-3);color:var(--faint);pointer-events:none}
+.doc-toolbar .search{width:100%;font:inherit;font-size:var(--fs-sm);padding:9px var(--s-3) 9px 34px;border:1px solid var(--border);border-radius:var(--r-md);color:var(--ink);background:#fff}
+.doc-toolbar .tools{display:flex;gap:var(--s-2);margin-left:auto}
+.doc-toolbar .tools button{display:inline-flex;align-items:center;gap:var(--s-2);white-space:nowrap;font:inherit;font-size:var(--fs-sm);padding:9px var(--s-4);border-radius:var(--r-md);border:1px solid var(--brand);background:var(--brand);color:#fff;font-weight:500}
+.doc-toolbar .tools button.sec{background:#fff;color:var(--ink);font-weight:400;border-color:var(--border)}
+.doc-hint{font-size:var(--fs-xs);color:var(--faint);line-height:1.75;margin:var(--s-3) 0 var(--s-5)}
+.doc-notice{display:flex;align-items:center;gap:var(--s-2);background:var(--brand-soft);border:1px solid var(--brand-line);color:var(--brand-ink);font-size:var(--fs-xs);margin:0 0 var(--s-3);padding:var(--s-2) var(--s-3);border-radius:var(--r-md)}
+.doc-listhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--s-3);font-size:var(--fs-xs);color:var(--muted)}
+.doc-listhead button{display:inline-flex;align-items:center;gap:var(--s-1);font:inherit;font-size:var(--fs-xs);padding:var(--s-1) var(--s-2);border-radius:var(--r-sm);border:1px solid transparent;background:transparent;color:var(--muted)}
+.doc-list{border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;background:#fff}
+.doc-row{display:flex;align-items:center;gap:var(--s-3);padding:var(--s-3) var(--s-4);border-bottom:1px solid var(--line)}
+.doc-row:last-child{border-bottom:none}
+.doc-row .dico{width:28px;height:28px;flex:none;display:grid;place-items:center;border-radius:var(--r-sm);background:var(--brand-soft);color:var(--brand-ink)}
+.doc-row .meta{flex:1;min-width:0}
+.doc-row .t{font-size:var(--fs-sm);font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.doc-row .sub2{font-size:var(--fs-xs);color:var(--muted);margin-top:2px}
+.doc-row .acts{display:flex;gap:var(--s-1);flex:none;color:var(--faint)}
+.doc-row .acts span{display:grid;place-items:center;padding:var(--s-1);border-radius:var(--r-sm)}
+.doc-empty{font-size:var(--fs-xs);color:var(--muted);padding:var(--s-5) var(--s-4);text-align:center;line-height:1.8}
+/* 新建项目弹窗 */
+.modal-mask{position:absolute;inset:0;background:rgba(23,23,26,.34);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;z-index:5;padding:var(--s-4)}
+.modal{background:#fff;border:1px solid var(--border);border-radius:var(--r-xl);padding:var(--s-5);width:440px;max-width:100%;max-height:100%;overflow:auto;box-shadow:var(--shadow)}
+.modal h3{margin:0 0 var(--s-1);font-size:var(--fs-title)}
+.modal .msub{margin:0 0 var(--s-5);color:var(--muted);font-size:var(--fs-xs);line-height:1.7}
+.modal h4{margin:var(--s-5) 0 var(--s-1);font-size:var(--fs-sm);padding-top:var(--s-5);border-top:1px solid var(--line)}
+.modal label{display:block;margin:var(--s-4) 0 var(--s-2);font-size:var(--fs-xs);font-weight:500;color:var(--ink)}
+.modal input[type=text]{font:inherit;width:100%;padding:9px var(--s-3);border:1px solid var(--border);border-radius:var(--r-md);font-size:var(--fs-sm);color:var(--ink)}
+.modal .hint{color:var(--faint);font-size:var(--fs-xs);line-height:1.7;margin:0}
+.drop{position:relative;display:flex;flex-direction:column;align-items:center;gap:var(--s-2);border:1px dashed var(--border);border-radius:var(--r-lg);padding:var(--s-5);text-align:center;
+  cursor:default;color:var(--muted);font-size:var(--fs-sm);margin:var(--s-3) 0 0;background:var(--bg-soft);transition:border-color var(--ease),background var(--ease),color var(--ease)}
+.drop>svg{color:var(--brand)}
+.drop.hot{border-color:var(--brand);background:var(--brand-soft);color:var(--brand-ink)}
+.files{list-style:none;padding:0;margin:var(--s-3) 0 0;border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden}
+.files li{display:flex;gap:var(--s-3);align-items:center;padding:var(--s-3);border-bottom:1px solid var(--line)}
+.files li:last-child{border-bottom:none}
+.files .fico{width:26px;height:26px;flex:none;display:grid;place-items:center;border-radius:var(--r-sm);background:var(--surface-3);color:var(--muted)}
+.files .info{flex:1;min-width:0;overflow-wrap:anywhere;font-size:var(--fs-sm);color:var(--ink)}
+.files .info small{display:block;color:var(--faint);margin-top:2px;font-size:var(--fs-xs)}
+.files .info small.err{color:var(--danger-ink)}
+.files .info small.ok{color:var(--brand-ink)}
+.files .fst{flex:none;display:grid;place-items:center;color:var(--faint)}
+.files .fst.ok{color:var(--brand)}
+.modal .actions{display:flex;justify-content:flex-end;gap:var(--s-2);margin-top:var(--s-5)}
+.modal .actions button{font:inherit;font-size:var(--fs-sm);padding:9px var(--s-4);border-radius:var(--r-md);border:1px solid var(--brand);background:var(--brand);color:#fff;font-weight:500}
+.modal .actions button.ghost{background:#fff;color:var(--ink);border-color:var(--border);font-weight:400}
+
+/* ===== 流程图 ===== */
+.flow-card{max-width:1020px;margin:0 auto;background:#fff;border:1px solid var(--border);border-radius:var(--r-xl);box-shadow:var(--shadow-md);padding:var(--s-6) var(--s-5)}
+.agent-lr{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--s-6);align-items:center}
+@media(max-width:880px){.agent-lr{grid-template-columns:1fr;gap:var(--s-5)}}
+.agent-lr svg{width:100%;height:auto;display:block}
+.say-now{display:inline-flex;align-items:center;gap:var(--s-2);font-size:var(--fs-xs);font-weight:600;color:var(--brand-ink);letter-spacing:.06em;text-transform:uppercase;margin-bottom:var(--s-2)}
+.say-now .d{width:7px;height:7px;border-radius:50%;background:var(--brand)}
+.agent-say h4{font-size:var(--fs-title);margin-bottom:var(--s-2)}
+.agent-say .desc{font-size:var(--fs-sm);color:var(--text);line-height:1.8;min-height:66px}
+.say-list{list-style:none;margin:var(--s-5) 0 0;display:flex;flex-direction:column;gap:var(--s-2)}
+.say-list li{display:flex;gap:var(--s-2);align-items:flex-start;font-size:var(--fs-xs);color:var(--muted);opacity:.45;transition:opacity .3s,color .3s}
+.say-list li.on{opacity:1;color:var(--text)}
+.say-list .n{font-family:Consolas,monospace;font-weight:600;font-size:10px;color:#fff;background:var(--n-300);border-radius:var(--r-sm);padding:2px var(--s-2);flex:none}
+.say-list li.on .n{background:var(--brand)}
+.say-list code{font-size:var(--fs-xs);color:var(--brand-ink)}
+/* 泳道图 */
+.lane-note{font-size:var(--fs-xs);color:var(--muted);text-align:center;margin-top:var(--s-4)}
+.chart-svg{width:100%;height:auto;display:block}
+.legend{display:flex;flex-wrap:wrap;gap:var(--s-4);justify-content:center;margin-top:var(--s-5);font-size:var(--fs-xs);color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:var(--s-2);vertical-align:-1px}
+
+/* ===== 亮点 ===== */
+#features{background:var(--bg-soft);border-top:1px solid var(--line)}
+.feat{display:grid;grid-template-columns:1fr 1fr;gap:var(--s-5);max-width:1020px;margin:0 auto}
+@media(max-width:860px){.feat{grid-template-columns:1fr}}
+.fcard{background:#fff;border:1px solid var(--border);border-radius:var(--r-xl);box-shadow:var(--shadow-sm);padding:var(--s-5)}
+.fcard .fn{display:inline-block;background:var(--surface-3);color:var(--muted);font-weight:500;font-size:var(--fs-xs);padding:3px var(--s-3);border-radius:var(--r-full);margin-bottom:var(--s-3)}
+.fcard h3{font-size:var(--fs-title);margin-bottom:var(--s-4)}
+.fcard p.body{font-size:var(--fs-sm);color:var(--text);line-height:1.8;margin-bottom:var(--s-4)}
+.cmp-svg{width:100%;height:auto;display:block}
+.fnote{font-size:var(--fs-sm);color:var(--text);background:var(--bg-soft);border-left:2px solid var(--brand);padding:var(--s-3) var(--s-4);border-radius:0 var(--r-sm) var(--r-sm) 0;line-height:1.8;margin-top:var(--s-4)}
+.fnote b{color:var(--brand-ink)}
+/* 数据表 */
+.rag-table{max-width:920px;margin:var(--s-6) auto 0;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:var(--fs-sm);background:#fff;border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden}
+th,td{padding:var(--s-3);text-align:center;border-bottom:1px solid var(--line);white-space:nowrap}
+th{background:var(--bg-soft);color:var(--ink);font-weight:600;font-size:var(--fs-xs)}
+td:first-child,th:first-child{text-align:left}
+td{font-variant-numeric:tabular-nums}
+tbody tr:last-child td{border-bottom:none}
+tr.best{background:var(--brand-soft)}
+td .hl{color:var(--brand-ink);font-weight:600}
+td .lo{color:var(--danger)}
+/* 数据展示 */
+.stats{max-width:920px;margin:var(--s-5) auto 0;display:grid;grid-template-columns:repeat(4,1fr);gap:var(--s-2)}
+@media(max-width:700px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{background:#fff;border:1px solid var(--border);border-radius:var(--r-md);padding:var(--s-3) var(--s-4)}
+.stat .k{font-size:var(--fs-xs);color:var(--muted)}
+.stat .v{font-size:var(--fs-title);font-weight:600;color:var(--ink);margin-top:2px;font-variant-numeric:tabular-nums}
+.stat .v small{font-size:var(--fs-xs);font-weight:400;color:var(--muted);margin-left:3px}
+.stat .v.bad{color:var(--danger)}
+.stat .v.mono{font-size:var(--fs-xs);font-weight:500;color:var(--text)}
+.config-line{max-width:920px;margin:var(--s-4) auto 0;font-size:var(--fs-xs);color:var(--muted);line-height:1.9;
+  background:#fff;border:1px solid var(--line);border-radius:var(--r-md);padding:var(--s-3) var(--s-4);overflow-wrap:anywhere}
+.config-line code{font-size:var(--fs-xs);background:var(--bg-soft);padding:1px 5px;border-radius:var(--r-sm);color:var(--ink)}
+.sig{max-width:920px;margin:var(--s-4) auto 0;display:grid;grid-template-columns:repeat(4,1fr);gap:var(--s-2)}
+@media(max-width:700px){.sig{grid-template-columns:repeat(2,1fr)}}
+.sig .c{background:#fff;border:1px solid var(--line);border-radius:var(--r-md);padding:var(--s-3) var(--s-4)}
+.sig .c .k{font-size:var(--fs-xs);color:var(--muted)}
+.sig .c .v{font-size:var(--fs-body);font-weight:600;color:var(--ink);margin-top:3px;font-variant-numeric:tabular-nums}
+.sig .c .v.no{color:var(--danger)}
+.sig .c .v.yes{color:var(--brand-ink)}
+.caveat{max-width:920px;margin:var(--s-4) auto 0;font-size:var(--fs-xs);color:var(--faint);line-height:1.9}
+.caveat code{font-size:11px}
+
+/* ===== footer ===== */
+footer{background:var(--hero);color:#dfe8e0;padding:var(--s-7) var(--s-5) var(--s-6);text-align:center}
+footer h3{color:#fff;margin-bottom:var(--s-2);font-size:clamp(20px,2.4vw,24px)}
+footer p{color:#a9b5ad;max-width:52ch;margin:0 auto var(--s-5);font-size:var(--fs-sm);line-height:1.8}
+.flink{display:inline-flex;align-items:center;gap:var(--s-2);background:var(--brand);color:#fff;font-weight:500;padding:11px var(--s-5);border-radius:var(--r-md);font-size:var(--fs-sm);transition:background var(--ease)}
+.flink:hover{background:var(--brand-ink)}
+footer .meta{margin-top:var(--s-6);padding-top:var(--s-5);border-top:1px solid rgba(255,255,255,.08);font-size:var(--fs-xs);color:#79867e;line-height:1.9}
+footer .meta code{color:#9db3a5}
+</style>
+</head>
+<body>
+
+<!-- 图标雪碧图：路径与 web/src/components/Icon.vue 同源，落地页与产品内保持同一套图形 -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-message-plus" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.9 8.9 0 0 1-3.8-.8L3 21l1.9-5a8.4 8.4 0 0 1 16.1-4.5zM9.5 11.5h5M12 9v5"/></symbol>
+  <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9zM18.5 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></symbol>
+  <symbol id="i-files" viewBox="0 0 24 24"><path d="M15 2H8a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V6zm0 0v4h4M4 7v13a2 2 0 0 0 2 2h9"/></symbol>
+  <symbol id="i-library" viewBox="0 0 24 24"><path d="M4 4h4v16H4zM10 4h4v16h-4zM17.5 4.5l3 15.2"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2 2 2 0 1 1-4 0 1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 4.6 15a2 2 0 1 1 0-4 1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 11.5 4.6a2 2 0 1 1 4 0 1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9 2 2 0 1 1 0 4 1.7 1.7 0 0 0-1.2 1.2z"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M4 7a2 2 0 0 1 2-2h3.2a2 2 0 0 1 1.5.7L12 7h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></symbol>
+  <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></symbol>
+  <symbol id="i-arrow-up-right" viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></symbol>
+  <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9 2.6 17a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.3-4.3"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v5M14 11v5"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 9l5-5 5 5M12 4v12"/></symbol>
+  <symbol id="i-file-plus" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zm0 0v6h6M12 12v6M9 15h6"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 4v16M15 4v16"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4l12 8-12 8z"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></symbol>
+</defs></svg>
+
+<div class="topnav"><div class="inner">
+  <a class="logo" href="#top"><span class="mk">R</span>Ragent</a>
+  <nav>
+    <a href="#demo">功能演示</a>
+    <a href="#agent">对话图</a>
+    <a href="#flow">编排流程</a>
+    <a href="#features">亮点与数据</a>
+  </nav>
+  <span class="spacer"></span>
+  <a class="cta-live" href="https://ragent.ashia.icu/" target="_blank" rel="noopener"><span class="live"></span>在线体验</a>
+</div></div>
+
+<a id="top"></a>
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="live"></span>在线可体验</span>
+    <h1>会<em>先判断该不该查</em>的知识库助手</h1>
+    <p class="lead">上传项目资料，Ragent 自己决定直答、追问还是检索，答完标出每一句的依据，引用都能点开原文核对。</p>
+    <div class="cta">
+      <a class="primary" href="https://ragent.ashia.icu/" target="_blank" rel="noopener">
+        打开在线应用
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>
+      </a>
+      <a class="ghost" href="#demo">
+        看它怎么跑
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+      </a>
+      <a class="text-link" href="https://github.com/angshihan777-droid/Ragent" target="_blank" rel="noopener">查看源码</a>
+    </div>
+    <div class="stack">
+      <span>LangGraph 编排</span>
+      <span>pgvector 召回</span>
+      <span>cross-encoder 重排</span>
+      <span>租约心跳 + reaper</span>
+    </div>
+  </div>
+</header>
+
+<!-- ================= 功能演示 ================= -->
+<section id="demo"><div class="wrap">
+  <div class="sec-head">
+    <div class="kicker">DEMO</div>
+    <h2>功能演示</h2>
+    <p>配置密钥 → 上传资料 → 提问。界面文案、字段与状态都取自真实组件，不是画出来的。</p>
+  </div>
+
+  <div class="pair">
+    <div class="pair-l">
+  <div class="stagebar">
+    <div class="steps-nav">
+      <span class="sn on" data-step="0"><span class="idx">1</span>配置密钥</span>
+      <span class="arw"><svg class="ic ic-xs"><use href="#i-chevron-right"/></svg></span>
+      <span class="sn" data-step="1"><span class="idx">2</span>上传资料</span>
+      <span class="arw"><svg class="ic ic-xs"><use href="#i-chevron-right"/></svg></span>
+      <span class="sn" data-step="2"><span class="idx">3</span>提问</span>
+    </div>
+    <div class="controls">
+      <button class="btn" id="aPause"><svg class="ic ic-sm"><use href="#i-pause"/></svg><span>暂停</span></button>
+      <button class="btn primary" id="aReplay"><svg class="ic ic-sm"><use href="#i-refresh"/></svg><span>重播</span></button>
+    </div>
+  </div>
+
+  <div class="appwin">
+    <div class="winbar"><span class="dot3 r"></span><span class="dot3 y"></span><span class="dot3 g"></span><span class="wintitle">ragent.ashia.icu</span></div>
+    <div class="app3">
+      <!-- 左栏 -->
+      <div class="col col-side">
+        <div class="s-brand"><span class="mk">R</span><span>Ragent<small>知识工作台</small></span></div>
+        <div class="s-nav" id="nvChat"><svg class="ic ic-sm"><use href="#i-message-plus"/></svg>新对话</div>
+        <div class="s-nav" id="nvIntro"><svg class="ic ic-sm"><use href="#i-sparkles"/></svg>使用介绍</div>
+        <div class="s-nav" id="nvDocs"><svg class="ic ic-sm"><use href="#i-files"/></svg>项目资料</div>
+        <div class="s-nav" id="nvLib"><svg class="ic ic-sm"><use href="#i-library"/></svg>知识库图书馆</div>
+        <div class="s-sec"><span>项目</span><svg class="ic ic-xs"><use href="#i-plus"/></svg></div>
+        <div class="s-proj on" id="aProj"><svg class="ic ic-xs arw"><use href="#i-chevron-down"/></svg><span class="nm">产品知识库</span><svg class="ic ic-xs mini"><use href="#i-plus"/></svg><svg class="ic ic-xs mini"><use href="#i-x"/></svg></div>
+        <div class="s-threads">
+          <div class="s-thread on" id="aThread">新会话</div>
+        </div>
+        <div class="s-foot">
+          <div class="s-cfg" id="aCfg"><span><svg class="ic ic-sm"><use href="#i-settings"/></svg>模型配置</span><small id="aCfgSt">未配置</small></div>
+          <div class="s-workspace">个人工作空间 · 单知识库助手</div>
+        </div>
+      </div>
+
+      <!-- 中栏 -->
+      <div class="col col-mid">
+        <div class="mid-head">
+          <div style="min-width:0">
+            <div class="crumb" id="aCrumb">产品知识库 <i>/ 模型配置</i></div>
+            <h4 id="aTitle">模型配置</h4>
+          </div>
+          <div class="acts" id="aActs" style="display:none"><span><svg class="ic ic-xs"><use href="#i-plus"/></svg>新对话</span><span>收起右栏</span></div>
+        </div>
+        <div class="mid-body" id="aBody">
+          <!-- 欢迎态 -->
+          <div class="welcome" id="aWelcome">
+            <div class="mark" aria-hidden="true">R</div>
+            <h1>从资料出发，找到答案</h1>
+            <p class="desc">围绕项目提问、梳理信息、追溯依据。助手会按需检索，资料与会话始终归属于你的项目。</p>
+            <div class="start-card">
+              <div class="project-line"><span class="project-icon"><svg class="ic ic-sm"><use href="#i-folder"/></svg></span><div><strong>产品知识库</strong><small>当前项目 · 独立资料空间</small></div></div>
+              <button type="button">开始新对话<svg class="ic ic-sm"><use href="#i-arrow-right"/></svg></button>
+            </div>
+            <p class="history-note">新对话从空白开始，历史会话仅在左侧手动打开。</p>
+          </div>
+        </div>
+        <div class="mid-comp" id="aComp" style="display:none">
+          <div class="composer-area">
+            <div class="composer" id="aBox">
+              <div class="ph" id="aPh">向知识库提问，让每个答案都有依据…</div>
+              <div class="composer-bottom">
+                <span class="scope"><svg class="ic ic-xs"><use href="#i-files"/></svg>产品知识库</span>
+                <button class="send dim" type="button" id="aSend" aria-label="发送"><svg class="ic ic-sm"><use href="#i-arrow-up"/></svg></button>
+              </div>
+            </div>
+            <p class="hint">按 Enter 发送 · Shift + Enter 换行 · 回答请结合原文核对</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右栏 -->
+      <div class="col col-right">
+        <div class="rp-card" id="aRpExec">
+          <div class="rp-head"><h5>执行过程</h5><span class="badge" id="aState">待发送</span></div>
+          <div id="aPlanWrap" style="display:none">
+            <div class="plan-title"><span class="pt-ico"><svg class="ic ic-sm"><use href="#i-folder"/></svg></span><div style="min-width:0"><div class="pt-name" id="aPtName">新会话</div><div class="pt-sub" id="aPtSub">产品知识库 · 知识库助手</div></div></div>
+          </div>
+          <ul class="steps" id="aSteps"></ul>
+          <p class="p-empty" id="aStepsEmpty">发送问题后，这里会记录本轮实际执行的步骤。</p>
+          <div class="prog-foot" id="aFoot" style="display:none"></div>
+        </div>
+        <div class="rp-card flow" id="aRpSrc" style="display:none">
+          <div class="rp-head"><h5>命中资料</h5><span class="badge" id="aSrcN">0 条</span></div>
+          <p class="score-hint">匹配度为向量余弦相似度，不代表回答正确率；资料按重排结果排序。</p>
+          <ul class="srcs" id="aSrcs"></ul>
+          <p class="p-empty" id="aSrcEmpty" style="display:none"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+    </div>
+
+    <div class="pair-r" id="agent">
+      <div class="rp-title"><span class="d"></span><span id="bNow">等待开始</span></div>
+      <h4 id="bHead">先决策，再决定要不要查资料</h4>
+      <p class="desc" id="bDesc">左边演示走到哪一步，右边就亮到哪个节点。</p>
+      <div class="flow-card">
+        <svg class="chart-svg" viewBox="0 0 434 900" role="img"
+             aria-label="对话图：START 进入 context，再到 decide；decide 条件分流到 retrieve 或直接 answer；retrieve 后经 evidence 条件判断，可进 rewrite 回到 retrieve，或进 answer；answer 到 validate 后结束">
+          <defs>
+            <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 z" fill="#99a29c"/>
+            </marker>
+            <marker id="ahg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 z" fill="#1f9d55"/>
+            </marker>
+          </defs>
+          <!-- 主干竖线（node 中心 66 → 858，共 7 个节点） -->
+          <path id="trunk" d="M170 66 L170 858" fill="none" stroke="#e3e8e5" stroke-width="2"/>
+          <path id="lit-trunk" d="M170 66 L170 858" fill="none" stroke="#1f9d55" stroke-width="2"
+                stroke-dasharray="792" stroke-dashoffset="792" style="transition:stroke-dashoffset .5s linear"/>
+
+          <!-- 节点：x=60..280 宽 220；中心 66 → 858，间距 132 -->
+          <g class="nd" data-k="context">
+            <rect x="60" y="44" width="220" height="44" rx="11" fill="#f6f8f7" stroke="#e3e8e5" stroke-width="1.5"/>
+            <text x="170" y="64" text-anchor="middle" font-size="13.5" font-weight="700" fill="#151b17">context</text>
+            <text x="170" y="79" text-anchor="middle" font-size="10.5" fill="#6f7a73">准备会话上下文</text>
+            <rect class="halo" x="54" y="38" width="232" height="56" rx="14" fill="none" stroke="#1f9d55" stroke-width="2" opacity="0"/>
+          </g>
+          <g class="nd" data-k="decide">
+            <rect x="60" y="176" width="220" height="44" rx="11" fill="#f6f8f7" stroke="#e3e8e5" stroke-width="1.5"/>
+            <text x="170" y="196" text-anchor="middle" font-size="13.5" font-weight="700" fill="#151b17">decide</text>
+            <text x="170" y="211" text-anchor="middle" font-size="10.5" fill="#6f7a73">理解问题与决策</text>
+            <rect class="halo" x="54" y="170" width="232" height="56" rx="14" fill="none" stroke="#1f9d55" stroke-width="2" opacity="0"/>
+          </g>
+          <g class="nd" data-k="retrieve">
+            <rect x="60" y="308" width="220" height="44" rx="11" fill="#f6f8f7" stroke="#e3e8e5" stroke-width="1.5"/>
+            <text x="170" y="328" text-anchor="middle" font-size="13.5" font-weight="700" fill="#151b17">retrieve</text>
+            <text x="170" y="343" text-anchor="middle" font-size="10.5" fill="#6f7a73">检索与重排</text>
+            <rect class="halo" x="54" y="302" width="232" height="56" rx="14" fill="none" stroke="#1f9d55" stroke-width="2" opacity="0"/>
+          </g>
+          <g class="nd" data-k="evidence">
+            <rect x="60" y="440" width="220" height="44" rx="11" fill="#f6f8f7" stroke="#e3e8e5" stroke-width="1.5"/>
+            <text x="170" y="460" text-anchor="middle" font-size="13.5" font-weight="700" fill="#151b17">evidence</text>
+            <text x="170" y="475" text-anchor="middle" font-size="10.5" fill="#6f7a73">检查证据</text>
+            <rect class="halo" x="54" y="434" width="232" height="56" rx="14" fill="none" stroke="#1f9d55" stroke-width="2" opacity="0"/>
+          </g>
+          <g class="nd" data-k="rewrite">
+            <rect x="60" y="572" width="220" height="44" rx="11" fill="#f6f8f7" stroke="#e3e8e5" stroke-width="1.5"/>
+            <text x="170" y="592" text-anchor="middle" font-size="13.5" font-weight="700" fill="#151b17">rewrite</text>
+            <text x="170" y="607" text-anchor="middle" font-size="10.5" fill="#6f7a73">改写查询并补查</text>
+            <rect class="halo" x="54" y="566" width="232" height="56" rx="14" fill="none" stroke="#1f9d55" stroke-width="2" opacity="0"/>
+          </g>
+          <g class="nd" data-k="answer">
+            <rect x="60" y="704" width="220" height="44" rx="11" fill="#f6f8f7" stroke="#e3e8e5" stroke-width="1.5"/>
+            <text x="170" y="724" text-anchor="middle" font-size="13.5" font-weight="700" fill="#151b17">answer</text>
+            <text x="170" y="739" text-anchor="middle" font-size="10.5" fill="#6f7a73">生成回答</text>
+            <rect class="halo" x="54" y="698" width="232" height="56" rx="14" fill="none" stroke="#1f9d55" stroke-width="2" opacity="0"/>
+          </g>
+          <g class="nd" data-k="validate">
+            <rect x="60" y="836" width="220" height="44" rx="11" fill="#f6f8f7" stroke="#e3e8e5" stroke-width="1.5"/>
+            <text x="170" y="856" text-anchor="middle" font-size="13.5" font-weight="700" fill="#151b17">validate</text>
+            <text x="170" y="871" text-anchor="middle" font-size="10.5" fill="#6f7a73">检查引用</text>
+            <rect class="halo" x="54" y="830" width="232" height="56" rx="14" fill="none" stroke="#1f9d55" stroke-width="2" opacity="0"/>
+          </g>
+
+          <!-- decide → retrieve 分支（右侧短接，标注条件） -->
+          <path class="br" data-b="d2r" d="M280 198 L330 198 L330 330 L280 330" fill="none" stroke="#e3e8e5" stroke-width="2"/>
+          <text x="330" y="264" text-anchor="middle" font-size="10.5" fill="#6f7a73" transform="rotate(-90 330 264)">action = retrieve</text>
+
+          <!-- evidence → rewrite 回环 -->
+          <path class="br" data-b="e2r" d="M280 462 L330 462 L330 594 L280 594" fill="none" stroke="#e3e8e5" stroke-width="2"/>
+          <text x="330" y="528" text-anchor="middle" font-size="10.5" fill="#6f7a73" transform="rotate(-90 330 528)">改写补查</text>
+          <!-- rewrite → retrieve 回流（左侧） -->
+          <path class="br" data-b="r2ret" d="M60 594 L22 594 L22 330 L60 330" fill="none" stroke="#e3e8e5" stroke-width="2" marker-end="url(#ah)"/>
+          <text x="12" y="462" text-anchor="middle" font-size="10.5" fill="#6f7a73" transform="rotate(-90 12 462)">最多 2 轮</text>
+
+          <!-- decide → answer 直答短路（最右） -->
+          <path class="br" data-b="d2a" d="M280 186 L406 186 L406 726 L280 726" fill="none" stroke="#e3e8e5" stroke-width="2"/>
+          <text x="398" y="456" text-anchor="middle" font-size="10.5" fill="#6f7a73" transform="rotate(-90 398 456)">direct / clarify</text>
+
+          <!-- evidence → answer（虚线表示条件直通） -->
+          <path class="br" data-b="e2a" d="M170 484 L170 704" fill="none" stroke="#e3e8e5" stroke-width="2" opacity="0" marker-end="url(#ah)"/>
+
+          <text x="170" y="892" text-anchor="middle" font-size="10.5" fill="#99a29c">START → context → … → validate → END</text>
+        </svg>
+      </div>
+      <ul class="say-list" hidden></ul>
+      <div class="controls pair-ctl">
+        <button class="btn" id="bPause"><svg class="ic ic-sm"><use href="#i-pause"/></svg><span>暂停</span></button>
+        <button class="btn primary" id="bReplay"><svg class="ic ic-sm"><use href="#i-refresh"/></svg><span>重播</span></button>
+      </div>
+    </div>
+  </div>
+</div></section>
+
+<!-- ================= 编排流程 ================= -->
+<section id="flow"><div class="wrap">
+  <div class="sec-head">
+    <div class="kicker">ORCHESTRATION</div>
+    <h2>编排流程</h2>
+    <p>同一会话同一时刻只跑一个请求，跨会话并行。Redis 只搬信号，业务真相始终在 PostgreSQL。</p>
+  </div>
+  <div class="flow-card">
+    <svg class="chart-svg" viewBox="0 0 1000 486" role="img"
+         aria-label="五条泳道：API 落库并建 run；调度用 advisory 锁判断组内是否空闲，空闲才建 run 置 dispatched；Redis 用 LPUSH 投递、worker 用 BRPOP 取；worker 抢租约、每 2 秒心跳、执行 LangGraph；reaper 每 5 秒扫描超时租约打回重投；完成后 finalize_run 在一个事务里提交结果并派发下一个">
+      <defs>
+        <marker id="lh" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="#cbd3ce"/>
+        </marker>
+        <marker id="lg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="#1f9d55"/>
+        </marker>
+      </defs>
+      <!-- 泳道底 -->
+      <g>
+        <rect x="0" y="8" width="1000" height="86" rx="12" fill="#fafbfa" stroke="#edf0ee"/>
+        <rect x="0" y="102" width="1000" height="86" rx="12" fill="#fafbfa" stroke="#edf0ee"/>
+        <rect x="0" y="196" width="1000" height="86" rx="12" fill="#fafbfa" stroke="#edf0ee"/>
+        <rect x="0" y="290" width="1000" height="86" rx="12" fill="#fafbfa" stroke="#edf0ee"/>
+        <rect x="0" y="384" width="1000" height="94" rx="12" fill="#fafbfa" stroke="#edf0ee"/>
+      </g>
+      <!-- 泳道名（左竖排） -->
+      <g font-size="11.5" fill="#6f7a73" font-weight="700">
+        <text x="22" y="51" text-anchor="middle" transform="rotate(-90 22 51)">API 进程</text>
+        <text x="22" y="145" text-anchor="middle" transform="rotate(-90 22 145)">调度（同一事务）</text>
+        <text x="22" y="239" text-anchor="middle" transform="rotate(-90 22 239)">Redis</text>
+        <text x="22" y="333" text-anchor="middle" transform="rotate(-90 22 333)">Worker 进程</text>
+        <text x="22" y="431" text-anchor="middle" transform="rotate(-90 22 431)">完成 / 恢复</text>
+      </g>
+
+      <!-- 泳道 1 -->
+      <g>
+        <rect class="lb" data-l="1" x="60" y="30" width="190" height="44" rx="10" fill="#f6f8f7" stroke="#e3e8e5" stroke-width="1.5"/>
+        <text x="155" y="50" text-anchor="middle" font-size="12.5" font-weight="700" fill="#151b17">提问落库</text>
+        <text x="155" y="65" text-anchor="middle" font-size="10.5" fill="#6f7a73">run_request(queued)</text>
+        <path d="M250 52 L300 52" stroke="#cbd3ce" stroke-width="1.8" marker-end="url(#lh)"/>
+        <rect class="lb" data-l="2" x="304" y="30" width="200" height="44" rx="10" fill="#f6f8f7" stroke="#e3e8e5" stroke-width="1.5"/>
+        <text x="404" y="50" text-anchor="middle" font-size="12.5" font-weight="700" fill="#151b17">判定组内是否空闲</text>
+        <text x="404" y="65" text-anchor="middle" font-size="10.5" fill="#6f7a73">blake2b → advisory xact lock</text>
+      </g>
+
+      <!-- 泳道 2 -->
+      <g>
+        <rect class="lb" data-l="3" x="304" y="124" width="200" height="44" rx="10" fill="#fff6e8" stroke="#e0b07a" stroke-width="1.5"/>
+        <text x="404" y="144" text-anchor="middle" font-size="12.5" font-weight="700" fill="#8a5a1e">组内已有请求在跑</text>
+        <text x="404" y="159" text-anchor="middle" font-size="10.5" fill="#a5875f">什么都不做，留在队里等</text>
+        <rect class="lb" data-l="4" x="560" y="124" width="200" height="44" rx="10" fill="#e8f4ed" stroke="#1f9d55" stroke-width="1.5"/>
+        <text x="660" y="144" text-anchor="middle" font-size="12.5" font-weight="700" fill="#197a43">取队头建 run</text>
+        <text x="660" y="159" text-anchor="middle" font-size="10.5" fill="#4f8a68">create_run + 置 dispatched</text>
+        <path d="M504 146 L556 146" stroke="#cbd3ce" stroke-width="1.8" marker-end="url(#lh)"/>
+        <text x="530" y="140" text-anchor="middle" font-size="10" fill="#99a29c">空闲</text>
+      </g>
+
+      <!-- 泳道 3 -->
+      <g>
+        <rect class="lb" data-l="5" x="560" y="218" width="200" height="44" rx="10" fill="#eef2f8" stroke="#8aa6cc" stroke-width="1.5"/>
+        <text x="660" y="238" text-anchor="middle" font-size="12.5" font-weight="700" fill="#2f6fb0">LPUSH ragent:runs</text>
+        <text x="660" y="253" text-anchor="middle" font-size="10.5" fill="#5a7fa8">事务 commit 之后才投递</text>
+        <path d="M660 168 L660 214" stroke="#cbd3ce" stroke-width="1.8" marker-end="url(#lh)"/>
+        <text x="700" y="194" font-size="10.5" fill="#6f7a73">只搬 run_id</text>
+      </g>
+
+      <!-- 泳道 4 -->
+      <g>
+        <rect class="lb" data-l="6" x="60" y="312" width="200" height="44" rx="10" fill="#e8f4ed" stroke="#1f9d55" stroke-width="1.5"/>
+        <text x="160" y="332" text-anchor="middle" font-size="12.5" font-weight="700" fill="#197a43">BRPOP 取出 run</text>
+        <text x="160" y="347" text-anchor="middle" font-size="10.5" fill="#4f8a68">claim_run 抢租约</text>
+        <path d="M660 262 L660 286 L160 286 L160 308" fill="none" stroke="#cbd3ce" stroke-width="1.8" marker-end="url(#lh)"/>
+        <rect class="lb" data-l="7" x="300" y="312" width="220" height="44" rx="10" fill="#e8f4ed" stroke="#1f9d55" stroke-width="1.5"/>
+        <text x="410" y="332" text-anchor="middle" font-size="12.5" font-weight="700" fill="#197a43">心跳续约 + 执行对话图</text>
+        <text x="410" y="347" text-anchor="middle" font-size="10.5" fill="#4f8a68">每 2 秒 heartbeat，租约 10 秒</text>
+        <path d="M260 334 L296 334" stroke="#1f9d55" stroke-width="1.8" marker-end="url(#lg)"/>
+        <rect class="lb" data-l="8" x="600" y="312" width="230" height="44" rx="10" fill="#f6f8f7" stroke="#e3e8e5" stroke-width="1.5"/>
+        <text x="715" y="332" text-anchor="middle" font-size="12.5" font-weight="700" fill="#151b17">SSE 推送步骤与命中资料</text>
+        <text x="715" y="347" text-anchor="middle" font-size="10.5" fill="#6f7a73">答案校验通过后才发布正文</text>
+        <path d="M520 334 L596 334" stroke="#cbd3ce" stroke-width="1.8" marker-end="url(#lh)"/>
+      </g>
+
+      <!-- 泳道 5 -->
+      <g>
+        <rect class="lb" data-l="9" x="60" y="404" width="240" height="48" rx="10" fill="#fff6e8" stroke="#e0b07a" stroke-width="1.5"/>
+        <text x="180" y="425" text-anchor="middle" font-size="12.5" font-weight="700" fill="#8a5a1e">reaper 每 5 秒扫超时租约</text>
+        <text x="180" y="441" text-anchor="middle" font-size="10.5" fill="#a5875f">打回 pending 并重新 LPUSH</text>
+        <path d="M410 356 L410 380 L180 380 L180 400" fill="none" stroke="#cbd3ce" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#lh)"/>
+        <rect class="lb" data-l="10" x="360" y="404" width="270" height="48" rx="10" fill="#f6f8f7" stroke="#e3e8e5" stroke-width="1.5"/>
+        <text x="495" y="425" text-anchor="middle" font-size="12.5" font-weight="700" fill="#151b17">finalize_run 一个事务收尾</text>
+        <text x="495" y="441" text-anchor="middle" font-size="10.5" fill="#6f7a73">写回答 + 终态 + 派发下一个 FIFO</text>
+        <path d="M715 356 L715 380 L520 380 L520 404" fill="none" stroke="#1f9d55" stroke-width="1.8" marker-end="url(#lg)"/>
+        <rect class="lb" data-l="11" x="680" y="404" width="240" height="48" rx="10" fill="#f6f8f7" stroke="#e3e8e5" stroke-width="1.5"/>
+        <text x="800" y="425" text-anchor="middle" font-size="12.5" font-weight="700" fill="#151b17">同一个会话的下一个请求</text>
+        <text x="800" y="441" text-anchor="middle" font-size="10.5" fill="#6f7a73">由这次事务里原子出队</text>
+        <path d="M630 428 L676 428" stroke="#cbd3ce" stroke-width="1.8" marker-end="url(#lh)"/>
+      </g>
+    </svg>
+    <div class="legend">
+      <span><i style="background:var(--brand-soft);border:1px solid var(--brand)"></i>正常路径</span>
+      <span><i style="background:#eef2f8;border:1px solid #8aa6cc"></i>Redis 投递</span>
+      <span><i style="background:#fff6e8;border:1px solid #e0b07a"></i>排队与超时恢复</span>
+    </div>
+    <p class="lane-note">队列信号丢失不会丢任务：<code class="mono">dispatched</code> 状态留在 PostgreSQL 里，reaper 扫描到时按同样路径重新投递。</p>
+  </div>
+</div></section>
+
+<!-- ================= 亮点与数据 ================= -->
+<section id="features"><div class="wrap">
+  <div class="sec-head">
+    <div class="kicker">HIGHLIGHTS</div>
+    <h2>关键设计与实测</h2>
+    <p>两个关键点，外加一组公开数据集上的实测结果：THUIR/T2Ranking dev split，300 条查询，走生产入库与检索通道。</p>
+  </div>
+
+  <div class="feat">
+    <div class="fcard">
+      <div class="fn">亮点一 · 自主决策检索</div>
+      <h3>先想「要不要查」，再决定怎么答</h3>
+      <svg class="cmp-svg" viewBox="0 0 400 268" role="img"
+           aria-label="左侧无脑检索：任意问题直接进检索再拼接作答；右侧 decide 分流：任意问题分出三条线，分别到 direct 直答、clarify 澄清、retrieve 检索，下方括号标明只有 action = retrieve 才走检索分支">
+        <defs>
+          <marker id="mh" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" fill="#99a29c"/>
+          </marker>
+          <marker id="mhg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" fill="#1f9d55"/>
+          </marker>
+        </defs>
+
+        <!-- 左：无脑检索 -->
+        <text x="10" y="16" font-size="11.5" font-weight="700" fill="#6f7a73">无脑检索</text>
+        <rect x="10" y="28" width="170" height="30" rx="7" fill="#151b17"/>
+        <text x="95" y="47" text-anchor="middle" font-size="12" fill="#fff">任意问题</text>
+        <path d="M95 58 L95 84" stroke="#99a29c" stroke-width="1.6" marker-end="url(#mh)"/>
+        <rect x="10" y="88" width="170" height="30" rx="7" fill="#fff" stroke="#e3e8e5"/>
+        <text x="95" y="107" text-anchor="middle" font-size="12" fill="#ad3737">先检索再说</text>
+        <path d="M95 118 L95 144" stroke="#99a29c" stroke-width="1.6" marker-end="url(#mh)"/>
+        <rect x="10" y="148" width="170" height="30" rx="7" fill="#fff" stroke="#e3e8e5"/>
+        <text x="95" y="167" text-anchor="middle" font-size="12" fill="#2d2d31">拼接作答</text>
+
+        <!-- 右：decide 分流 -->
+        <text x="220" y="16" font-size="11.5" font-weight="700" fill="#197a43">✓ decide 分流</text>
+        <rect x="220" y="28" width="170" height="30" rx="7" fill="#151b17"/>
+        <text x="305" y="47" text-anchor="middle" font-size="12" fill="#fff">任意问题</text>
+        <!-- 三条线分别指向三个决策 -->
+        <path d="M305 58 L305 68 L248 68 L248 84" fill="none" stroke="#99a29c" stroke-width="1.6" marker-end="url(#mh)"/>
+        <path d="M305 58 L305 84" fill="none" stroke="#99a29c" stroke-width="1.6" marker-end="url(#mh)"/>
+        <path d="M305 58 L305 68 L362 68 L362 84" fill="none" stroke="#1f9d55" stroke-width="1.8" marker-end="url(#mhg)"/>
+        <rect x="220" y="88" width="56" height="30" rx="7" fill="#fff" stroke="#e3e8e5"/>
+        <text x="248" y="107" text-anchor="middle" font-size="11" fill="#2d2d31">direct</text>
+        <rect x="277" y="88" width="56" height="30" rx="7" fill="#fff" stroke="#e3e8e5"/>
+        <text x="305" y="107" text-anchor="middle" font-size="11" fill="#2d2d31">clarify</text>
+        <rect x="334" y="88" width="56" height="30" rx="7" fill="#1f9d55"/>
+        <text x="362" y="107" text-anchor="middle" font-size="11" fill="#fff" font-weight="600">retrieve</text>
+        <!-- 括号：什么才走检索 -->
+        <path d="M334 128 L334 138 L390 138 L390 128" fill="none" stroke="#1f9d55" stroke-width="1.6"/>
+        <path d="M362 138 L362 152" fill="none" stroke="#1f9d55" stroke-width="1.6" marker-end="url(#mhg)"/>
+        <rect x="222" y="156" width="168" height="26" rx="7" fill="#e8f4ed" stroke="#1f9d55"/>
+        <text x="306" y="173" text-anchor="middle" font-size="11" fill="#197a43">只有这步才去查资料</text>
+      </svg>
+      <div class="fnote">寒暄与一般解释 <b>action = direct</b> 直接回答，意图不清先 <b>clarify</b> 问一句，
+        只有 <b>action = retrieve</b> 才进检索分支。</div>
+    </div>
+
+    <div class="fcard">
+      <div class="fn">亮点二 · 两阶段检索</div>
+      <h3>向量粗召回，cross-encoder 精排</h3>
+      <svg class="cmp-svg" viewBox="0 0 400 268" role="img"
+           aria-label="左侧单阶段：向量直接取 Top3，耗时 26.7 毫秒；右侧两阶段：bge-small-zh 召回 20，bge-reranker-base 重排，输出带引用的 Top3">
+        <defs>
+          <marker id="ph" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" fill="#99a29c"/>
+          </marker>
+          <marker id="phg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" fill="#1f9d55"/>
+          </marker>
+        </defs>
+
+        <text x="10" y="16" font-size="11.5" font-weight="700" fill="#6f7a73">单阶段</text>
+        <rect x="10" y="28" width="170" height="30" rx="7" fill="#fff" stroke="#e3e8e5"/>
+        <text x="95" y="47" text-anchor="middle" font-size="12" fill="#2d2d31">向量直接取 Top3</text>
+        <path d="M95 58 L95 84" stroke="#99a29c" stroke-width="1.6" marker-end="url(#mh)"/>
+        <rect x="10" y="88" width="170" height="30" rx="7" fill="#f6f8f7" stroke="#e3e8e5"/>
+        <text x="95" y="107" text-anchor="middle" font-size="12" fill="#99a29c">26.7 ms</text>
+
+        <rect x="10" y="140" width="170" height="30" rx="7" fill="#fff" stroke="#e3e8e5"/>
+        <text x="95" y="159" text-anchor="middle" font-size="12" fill="#2d2d31">R@3 0.6736</text>
+        <rect x="10" y="178" width="170" height="30" rx="7" fill="#fff" stroke="#e3e8e5"/>
+        <text x="95" y="197" text-anchor="middle" font-size="12" fill="#2d2d31">Hit@1 0.9033</text>
+
+        <text x="220" y="16" font-size="11.5" font-weight="700" fill="#197a43">✓ 召回 20 → 重排 3</text>
+        <rect x="220" y="28" width="170" height="30" rx="7" fill="#fff" stroke="#e3e8e5"/>
+        <text x="305" y="43" text-anchor="middle" font-size="11.5" fill="#2d2d31">召回 20 · bge-small-zh</text>
+        <text x="305" y="54" text-anchor="middle" font-size="10" fill="#99a29c">pgvector</text>
+        <path d="M305 58 L305 74" stroke="#99a29c" stroke-width="1.6" marker-end="url(#mh)"/>
+        <rect x="220" y="78" width="170" height="30" rx="7" fill="#fff" stroke="#e3e8e5"/>
+        <text x="305" y="93" text-anchor="middle" font-size="11.5" fill="#2d2d31">重排 · bge-reranker-base</text>
+        <text x="305" y="104" text-anchor="middle" font-size="10" fill="#99a29c">cross-encoder</text>
+        <path d="M305 108 L305 124" stroke="#1f9d55" stroke-width="1.8" marker-end="url(#phg)"/>
+        <rect x="220" y="128" width="170" height="30" rx="7" fill="#1f9d55"/>
+        <text x="305" y="147" text-anchor="middle" font-size="11.5" fill="#fff" font-weight="600">Top 3 带引用</text>
+
+        <rect x="220" y="178" width="82" height="30" rx="7" fill="#e8f4ed" stroke="#1f9d55"/>
+        <text x="261" y="197" text-anchor="middle" font-size="11.5" fill="#197a43">R@3 0.6796</text>
+        <rect x="308" y="178" width="82" height="30" rx="7" fill="#e8f4ed" stroke="#1f9d55"/>
+        <text x="349" y="197" text-anchor="middle" font-size="11.5" fill="#197a43">Hit@1 0.9167</text>
+      </svg>
+      <div class="fnote">重排把 MRR@3 从 0.9372 抬到 0.9506、Hit@1 从 90.33% 抬到 91.67%，
+        代价是 p50 从 <b>26.7 ms</b> 涨到 <b>2376.3 ms</b>。</div>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="k">查询</div><div class="v">300 <small>条</small></div></div>
+    <div class="stat"><div class="k">段落 / chunk</div><div class="v">1,991 <small>/ 5,771</small></div></div>
+    <div class="stat"><div class="k">正确答案</div><div class="v">1,241 <small>个</small></div></div>
+    <div class="stat"><div class="k">BM25 难负例</div><div class="v">759 <small>个</small></div></div>
+    <div class="stat"><div class="k">入库耗时</div><div class="v">211.9 <small>s</small></div></div>
+    <div class="stat"><div class="k">Embedding</div><div class="v mono">bge-small-zh-v1.5</div></div>
+    <div class="stat"><div class="k">Reranker</div><div class="v mono">bge-reranker-base</div></div>
+    <div class="stat"><div class="k">随机种子</div><div class="v mono">20260922</div></div>
+  </div>
+
+  <div class="rag-table">
+    <table>
+      <thead><tr><th>检索配置</th><th>R@3</th><th>MRR@3</th><th>nDCG@3</th><th>Hit@1</th><th>p50</th><th>p95</th></tr></thead>
+      <tbody>
+        <tr><td>向量 top-3</td><td>0.6736</td><td>0.9372</td><td>0.8757</td><td>0.9033</td><td>26.7 ms</td><td>38.8 ms</td></tr>
+        <tr class="best"><td>召回 20 → 重排 → top-3</td><td class="hl">0.6796</td><td class="hl">0.9506</td><td class="hl">0.8831</td><td class="hl">0.9167</td><td class="lo">2376.3 ms</td><td class="lo">3570.2 ms</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="sig">
+    <div class="c"><div class="k">Hit@1 平均提升</div><div class="v">+0.0133</div></div>
+    <div class="c"><div class="k">配对 t（n=300）</div><div class="v">0.71</div></div>
+    <div class="c"><div class="k">Bootstrap 95% CI</div><div class="v">[-0.0233, +0.0500]</div></div>
+    <div class="c"><div class="k">CI 排除 0</div><div class="v no">否</div></div>
+    <div class="c"><div class="k">重排更好 / 更差 / 持平</div><div class="v">18 / 14 / 268</div></div>
+    <div class="c"><div class="k">向量排错 · 重排后仍错</div><div class="v">29 / 300 · 25 / 300</div></div>
+    <div class="c"><div class="k">两者都错</div><div class="v">11 / 300</div></div>
+    <div class="c"><div class="k">只有重排能救对</div><div class="v">约 4 条</div></div>
+  </div>
+
+  <p class="caveat">
+    池子只有 1,991 个段落，比真实文档库小三个数量级；T2Ranking 即 C-MTEB 的 <code>T2Retrieval</code>，bge 系列可能训练时见过，存在数据泄漏。
+    语料 SHA256 <code>149a3c13…f77ca</code>，单次运行，未做重复取中位数。脚本里 <code>recall_at_10</code> 字段等同于 R@3，不要当作 Recall@10 引用。
+  </p>
+</div></section>
+
+<footer>
+  <h3>上传你自己的资料试试</h3>
+  <p>看它先判断该不该查、查到什么、又凭什么这么答。所有引用都能点开原文核对。</p>
+  <a class="flink" href="https://ragent.ashia.icu/" target="_blank" rel="noopener">打开 ragent.ashia.icu →</a>
+  <div class="meta">
+    Ragent · 项目知识库助手 · FastAPI + LangGraph + PostgreSQL/pgvector + Redis + Vue 3<br>
+    本地单用户应用，无默认项目与内置密钥；当前不含鉴权与多租户。
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+  function makeRunner(){
+    var st = { token: 0, paused: false };
+    st.wait = async function(ms){
+      var t = st.token, e = 0;
+      while (e < ms){ if (t !== st.token) throw "stop"; if (!st.paused) e += 40; await sleep(40); }
+      if (t !== st.token) throw "stop";
+    };
+    return st;
+  }
+
+  /* ============ 演示：三段流程 ============ */
+  var A = makeRunner();
+  window.__A = A;
+
+  var stepPills = [].slice.call(document.querySelectorAll(".sn"));
+  function pill(i){
+    stepPills.forEach(function(p){
+      var s = +p.dataset.step;
+      p.classList.toggle("on", s === i);
+      p.classList.toggle("done", s < i);
+    });
+  }
+
+  var el = {
+    nvChat:$("nvChat"), nvIntro:$("nvIntro"), nvDocs:$("nvDocs"), nvLib:$("nvLib"),
+    proj:$("aProj"), thread:$("aThread"), cfg:$("aCfg"), cfgSt:$("aCfgSt"),
+    crumb:$("aCrumb"), title:$("aTitle"), acts:$("aActs"),
+    body:$("aBody"), comp:$("aComp"), box:$("aBox"), ph:$("aPh"), send:$("aSend"), welcome:$("aWelcome"),
+    state:$("aState"), plan:$("aPlanWrap"), ptName:$("aPtName"), ptSub:$("aPtSub"),
+    steps:$("aSteps"), stepsEmpty:$("aStepsEmpty"), foot:$("aFoot"),
+    rpSrc:$("aRpSrc"), srcN:$("aSrcN"), srcs:$("aSrcs"), srcEmpty:$("aSrcEmpty")
+  };
+  function navActive(which){
+    [["nvChat","chat"],["nvIntro","intro"],["nvDocs","docs"],["nvLib","lib"]].forEach(function(p){
+      var node = el[p[0]];
+      node.classList.toggle("on", p[1] === which);
+      node.classList.remove("hot");
+    });
+    el.proj.classList.toggle("on", which === "chat");
+  }
+  function badge(state, text){
+    el.state.className = "badge" + (state ? " " + state : "");
+    el.state.innerHTML = (state === "running" ? '<span class="badge-dot"></span>' : "") + text;
+  }
+  // 步骤全是真实节点与真实 label（backend/app/agent/graph.py STEP_LABELS）
+  function setSteps(items, iconOf){
+    el.steps.innerHTML = "";
+    items.forEach(function(it){
+      var li = document.createElement("li");
+      li.dataset.k = it.k;
+      li.innerHTML = '<span class="ico"><span class="dot"></span></span>'
+        + '<span class="s-emoji">' + (iconOf ? iconOf(it.k) : "") + "</span>"
+        + '<span class="lbl"></span>';
+      li.querySelector(".lbl").textContent = it.t;
+      el.steps.appendChild(li);
+    });
+    el.stepsEmpty.style.display = items.length ? "none" : "";
+    el.plan.style.display = items.length ? "" : "none";
+    el.foot.style.display = items.length ? "" : "none";
+  }
+  function step(k, s){
+    var li = el.steps.querySelector('li[data-k="' + k + '"]');
+    if (!li) return;
+    li.className = s;
+    li.querySelector(".ico").innerHTML =
+      s === "done" ? '<svg class="ic ic-sm check"><use href="#i-check"/></svg>' :
+      s === "running" ? '<span class="spin"></span>' :
+      s === "error" ? '<svg class="ic ic-sm bang"><use href="#i-alert"/></svg>' : '<span class="dot"></span>';
+  }
+  function foot(){
+    var n = el.steps.querySelectorAll('li.done').length;
+    el.foot.textContent = "已完成 " + n + " 个实际步骤 · " + (el.state.classList.contains("running") ? "处理中" : "本轮记录");
+  }
+
+  /* --- 第一段：模型配置（ConfigPage.vue 的真实字段与文案） --- */
+  async function sceneConfig(){
+    pill(0);
+    navActive(null);
+    el.nvChat.classList.remove("on");
+    el.proj.classList.remove("on");
+    el.thread.classList.remove("on");
+    el.cfg.classList.add("hot"); el.cfgSt.textContent = "未配置";
+    el.crumb.innerHTML = "产品知识库 <i>/ 模型配置</i>";
+    el.title.textContent = "模型配置";
+    el.acts.style.display = "none";
+    el.comp.style.display = "none";
+    el.rpSrc.style.display = "none";
+    setSteps([], null);
+    el.stepsEmpty.textContent = "发送问题后，这里会记录本轮实际执行的步骤。";
+    badge("", "待发送");
+    el.body.innerHTML =
+      '<div class="cfg-card">'
+      + '<h2>模型配置</h2>'
+      + '<p class="chint">支持任意 OpenAI 兼容地址（如 DeepSeek）。填好地址和密钥即可自动拉取可用模型。</p>'
+      + '<div class="cfg-field"><label>接口地址</label>'
+      + '<input id="cUrl" readonly placeholder="https://api.deepseek.com/v1" value="">'
+      + '<small>OpenAI 兼容的 base_url，通常以 /v1 结尾。</small></div>'
+      + '<div class="cfg-field"><label>API 密钥</label>'
+      + '<input id="cKey" type="password" readonly placeholder="请输入密钥" value="">'
+      + '<small>密钥只保存在本地后端，不会回显。</small></div>'
+      + '<div class="cfg-field"><div class="cfg-fhead"><label>模型</label>'
+      + '<button class="quiet" type="button" id="cFetch"><svg class="ic ic-sm"><use href="#i-refresh"/></svg>拉取模型</button></div>'
+      + '<select id="cModel" disabled><option>—</option></select></div>'
+      + '<div class="cfg-msg" id="cMsg"></div>'
+      + '<div class="actions"><button class="primary dim" type="button" id="cSave">保存配置</button></div>'
+      + "</div>";
+
+    var url = $("cUrl"), key = $("cKey"), fetchBtn = $("cFetch"),
+        model = $("cModel"), saveBtn = $("cSave"), msg = $("cMsg");
+
+    badge("running", "运行中");
+    url.classList.add("focus"); await A.wait(220);
+    await type(url, "https://api.deepseek.com/v1");
+    url.classList.remove("focus");
+    key.classList.add("focus"); await A.wait(160);
+    await type(key, "sk-••••••••••••••••••••", true);
+    key.classList.remove("focus");
+    await A.wait(160);
+
+    var fetchLabel = fetchBtn.lastChild;
+    fetchLabel.textContent = "拉取中…";
+    await A.wait(560);
+    fetchLabel.textContent = "拉取模型";
+    model.disabled = false;
+    model.innerHTML = "";
+    ["deepseek-chat", "deepseek-reasoner"].forEach(function(m){
+      var o = document.createElement("option"); o.textContent = m; model.appendChild(o);
+    });
+    model.classList.add("focus");
+    msg.className = "cfg-msg ok";
+    msg.textContent = "拉取到 2 个模型。";
+    await A.wait(400);
+    model.classList.remove("focus");
+
+    saveBtn.className = "primary";
+    saveBtn.textContent = "保存中…"; await A.wait(420);
+    saveBtn.textContent = "保存配置";
+    key.value = "";                       // 保存后清空输入框，密钥不回显
+    key.placeholder = "已设置（留空则不修改）";
+    msg.className = "cfg-msg ok";
+    msg.textContent = "已保存。";
+    el.cfg.classList.remove("hot"); el.cfgSt.textContent = "deepseek-chat";
+    badge("done", "已完成");
+    await A.wait(520);
+  }
+
+  /* --- 第二段：新建项目 + 上传首批资料（NewProjectModal.vue） --- */
+  async function sceneProject(){
+    pill(1);
+    navActive("docs");
+    el.nvDocs.classList.add("hot");
+    el.crumb.innerHTML = "产品知识库 <i>/ 知识库图书馆</i>";
+    el.title.textContent = "知识库图书馆";
+    el.comp.style.display = "none";
+    el.rpSrc.style.display = "none";
+    badge("running", "运行中");
+    el.body.innerHTML =
+      '<div class="doc-page">'
+      + '<h1>知识库图书馆</h1>'
+      + '<p class="sub">在这里上传、查看、编辑或删除资料，修改会同步更新检索索引。</p>'
+      + '<div class="doc-toolbar">'
+      + '<div class="search-wrap"><svg class="ic ic-sm"><use href="#i-search"/></svg>'
+      + '<input class="search" readonly placeholder="搜索资料标题"></div>'
+      + '<div class="tools"><button class="sec" type="button"><svg class="ic ic-sm"><use href="#i-file-plus"/></svg>新建文本</button>'
+      + '<button type="button"><svg class="ic ic-sm"><use href="#i-upload"/></svg>上传资料</button></div>'
+      + "</div>"
+      + '<p class="doc-hint">支持 PDF、Markdown、Word（.docx）和 TXT，单文件最大 20 MB。</p>'
+      + '<div class="doc-listhead"><span>0 份资料</span><button type="button"><svg class="ic ic-xs"><use href="#i-refresh"/></svg>刷新</button></div>'
+      + '<div class="doc-list"><p class="doc-empty">暂无资料。上传文件或新建文本资料后，助手就可以按需检索。</p></div>'
+      + "</div>"
+      + '<div class="modal-mask" id="pMask"><form class="modal" onsubmit="return false">'
+      + '<h3>新建知识库项目</h3>'
+      + '<p class="msub">项目是资料与会话的容器，助手只在当前项目范围内检索。</p>'
+      + '<label for="pName">项目名称 *</label>'
+      + '<input id="pName" type="text" readonly placeholder="例如：产品需求文档">'
+      + '<label for="pDesc">项目描述</label>'
+      + '<input id="pDesc" type="text" readonly placeholder="可选">'
+      + '<h4>项目资料</h4>'
+      + '<p class="hint">支持 PDF、Markdown、Word（.docx）和 TXT，单文件最大 20 MB。扫描 PDF 请先 OCR，旧 .doc 请先转换。</p>'
+      + '<label class="drop" id="pDrop"><svg class="ic ic-lg"><use href="#i-upload"/></svg>点击选择或拖入多个文件</label>'
+      + '<ul class="files" id="pFiles"></ul>'
+      + '<p class="hint" id="pNote" style="margin-top:12px">也可以先创建空项目，稍后在项目资料中上传。</p>'
+      + '<div class="actions"><button class="ghost" type="button">取消</button><button type="button" id="pGo">创建项目</button></div>'
+      + "</form></div>";
+
+    var openBtn = el.body.querySelector(".doc-toolbar .tools button:not(.sec)");
+    var pName = $("pName"), pDrop = $("pDrop"), pFiles = $("pFiles"), pNote = $("pNote"), pGo = $("pGo");
+    await A.wait(280);
+
+    pDrop.classList.add("hot"); await A.wait(220);
+    var files = [["产品手册.pdf", "已选择，创建后自动上传"], ["接口需求.docx", "已选择，创建后自动上传"], ["部署说明.md", "已选择，创建后自动上传"]];
+    for (var i = 0; i < files.length; i++){
+      var li = document.createElement("li");
+      li.innerHTML = '<span class="fico"><svg class="ic ic-sm"><use href="#i-book"/></svg></span>'
+        + '<div class="info"><span class="fname"></span><small></small></div>'
+        + '<span class="fst"><svg class="ic ic-sm"><use href="#i-x"/></svg></span>';
+      li.querySelector(".fname").textContent = files[i][0];
+      li.querySelector("small").textContent = files[i][1];
+      pFiles.appendChild(li);
+      // 选择的第一个文件会把项目名填成文件名去扩展名
+      if (i === 0){
+        pName.value = files[i][0].replace(/\.[^.]+$/, "").slice(0, 120);
+        pName.placeholder = "";
+      }
+      await A.wait(180);
+    }
+    pDrop.classList.remove("hot");
+    pNote.textContent = "文件已选好，点击“创建并上传”后开始入库。";
+    pGo.textContent = "创建并上传";
+    await A.wait(320);
+
+    pGo.textContent = "处理中…";
+    var rows = pFiles.querySelectorAll("li");
+    for (var j = 0; j < rows.length; j++){
+      var small = rows[j].querySelector("small");
+      small.className = ""; small.textContent = "上传并入库中";
+      await A.wait(300);
+      small.className = "ok"; small.textContent = "已入库";
+      var st = rows[j].querySelector(".fst");
+      st.className = "fst ok";
+      st.querySelector("use").setAttribute("href", "#i-check");
+      await A.wait(120);
+    }
+    pGo.textContent = "先进入项目";
+    await A.wait(420);
+
+    // 关掉弹窗，落到图书馆列表：资料行的真实结构
+    $("pMask").style.display = "none";
+    var list = el.body.querySelector(".doc-list");
+    var ACTS = '<div class="acts">'
+      + '<span><svg class="ic ic-sm"><use href="#i-eye"/></svg></span>'
+      + '<span><svg class="ic ic-sm"><use href="#i-pencil"/></svg></span>'
+      + '<span><svg class="ic ic-sm"><use href="#i-trash"/></svg></span></div>';
+    function docRow(name, chunks){
+      return '<div class="doc-row"><span class="dico"><svg class="ic ic-sm"><use href="#i-book"/></svg></span>'
+        + '<div class="meta"><div class="t">' + name + '</div>'
+        + '<div class="sub2">产品知识库 · ' + chunks + ' 个检索片段</div></div>' + ACTS + "</div>";
+    }
+    list.innerHTML = docRow("产品手册.pdf", 142) + docRow("接口需求.docx", 63) + docRow("部署说明.md", 21);
+    el.body.querySelector(".doc-listhead span").textContent = "3 份资料";
+    el.proj.querySelector(".nm").textContent = "产品手册";
+    el.ptSub.textContent = "产品手册 · 知识库助手";
+    badge("done", "已完成");
+    await A.wait(560);
+  }
+
+  /* --- 第三段：提问（ChatPage / ExecutionPanel / MessageBubble 的真实结构） --- */
+  var STEP_ICONS = { context:"01", decide:"02", retrieve:"03", evidence:"04", rewrite:"05", answer:"06", validate:"07" };
+  async function sceneAsk(){
+    pill(2);
+    navActive("chat");
+    el.crumb.innerHTML = "产品手册 <i>/ 知识库对话</i>";
+    el.title.textContent = "新会话";
+    el.ptName.textContent = "新会话";
+    el.acts.style.display = "";
+    el.rpSrc.style.display = "";
+    el.body.innerHTML = '<div class="mid-inner" id="aList"></div>';
+    var list = $("aList");
+    el.comp.style.display = "";
+    el.box.className = "composer";
+    el.ph.className = "ph";
+    el.ph.textContent = "向知识库提问，让每个答案都有依据…";
+    el.send.className = "send dim";
+    el.srcs.innerHTML = "";
+    el.srcEmpty.style.display = "";
+    el.srcEmpty.textContent = "发送问题后，检索命中的资料与匹配度会显示在这里。";
+    el.srcN.textContent = "0 条";
+
+    var q = "部署到生产环境需要哪些步骤？";
+    el.box.classList.add("focus");
+    await type(el.ph, q);
+    await A.wait(240);
+    el.send.className = "send";
+
+    // 用户气泡
+    list.innerHTML = '<div class="mrow user"><div class="mcol"><div class="mbub"></div></div></div>';
+    list.querySelector(".mbub").textContent = q;
+    el.ph.textContent = "向知识库提问，让每个答案都有依据…";
+    el.ph.className = "ph";
+    el.box.classList.remove("focus");
+    el.send.className = "send dim";
+    await A.wait(300);
+
+    // 这一轮真实走了 6 个节点（没有触发补查，所以没有 rewrite）
+    setSteps([
+      {k:"context", t:"准备会话上下文"},
+      {k:"decide",  t:"理解问题与决策"},
+      {k:"retrieve",t:"检索与重排"},
+      {k:"evidence",t:"检查证据"},
+      {k:"answer",  t:"生成回答"},
+      {k:"validate",t:"检查引用"}
+    ], function(k){ return STEP_ICONS[k]; });
+    badge("running", "运行中");
+    el.stepsEmpty.style.display = "none";
+    await A.wait(260);
+
+    var order = ["context","decide","retrieve","evidence","answer","validate"];
+    var hitSets = [
+      [["[S1] 部署说明.md · 生产部署","第 2 页","环境变量与数据库连接",0.88]],
+      [["[S1] 部署说明.md · 生产部署","第 2 页","环境变量与数据库连接",0.88],
+       ["[S2] 产品手册.pdf · 上线清单","第 12 页","备份 → 迁移 → 灰度",0.79]],
+      [["[S1] 部署说明.md · 生产部署","第 2 页","环境变量与数据库连接",0.88],
+       ["[S2] 产品手册.pdf · 上线清单","第 12 页","备份 → 迁移 → 灰度",0.79],
+       ["[S3] 接口需求.docx · 依赖服务","1 / 3 依赖服务","Postgres 与 Redis",0.72]]
+    ];
+    var shown = 0;
+
+    for (var i = 0; i < order.length; i++){
+      var k = order[i];
+      if (k !== "answer") syncNode(k);   // 右边跟着左边亮
+      step(k, "running");
+      foot();
+      if (k === "retrieve"){
+        await A.wait(420);
+        el.srcs.innerHTML = ""; el.srcEmpty.style.display = "none";
+      }
+      if (k === "evidence"){
+        // 命中资料在 evidence 之前就已经到达前端，这里补齐三条
+        for (var n = shown; n < 3; n++){
+          await A.wait(320);
+          addSource(hitSets[n][0], hitSets[2].slice(0, n + 1));
+        }
+        shown = 3;
+        el.srcN.textContent = "3 条";
+      }
+      await A.wait(k === "decide" ? 520 : 420);
+      step(k, "done");
+      foot();
+      if (k === "answer") await A.wait(200);
+    }
+
+    // answer 的正文：先流式追加（增量只用于即时显示），最后被校验后的版本覆盖
+    var bubble = document.createElement("div");
+    bubble.className = "mrow assistant";
+    bubble.innerHTML = '<div class="mcol"><div class="author">'
+      + '<span class="i"><svg class="ic ic-sm"><use href="#i-sparkles"/></svg></span>知识库助手</div>'
+      + '<div class="mbub streaming"></div></div>';
+    list.appendChild(bubble);
+    var target = bubble.querySelector(".mbub");
+    var text = "生产部署分三步：① 先配好环境变量与数据库连接，执行迁移；② 启动 API 与 worker 两个进程；③ 按上线清单核对 PostgreSQL 与 Redis 依赖，再灰度切流。";
+    target.textContent = "";
+    var chunk = 6;
+    for (var p = 0; p < text.length; p += chunk){
+      target.textContent += text.slice(p, p + chunk);
+      list.scrollTop = list.scrollHeight;
+      await A.wait(70);
+    }
+    target.innerHTML = target.textContent
+      + '<span class="cite">[S1]</span><span class="cite">[S2]</span>';
+    target.classList.remove("streaming");
+    target.insertAdjacentHTML("beforeend",
+      '<div class="srcs"><details open><summary>3 条参考资料</summary></details></div>');
+    badge("done", "已完成");
+    foot();
+    pill(3);
+    finishNote();
+  }
+
+  function addSource(title, pages){
+    var li = document.createElement("li");
+    var score = pages[pages.length - 1][3];
+    var head = pages[pages.length - 1];
+    li.innerHTML = '<button class="src-btn" type="button">'
+      + '<span class="src-t"></span>'
+      + '<span class="src-p">' + head[1] + "</span>"
+      + '<span class="src-p">' + head[2] + "</span>"
+      + '<span class="match">匹配度 ' + score.toFixed(2) + "</span>"
+      + '<meter min="0" max="1" low="0.5" high="0.75" optimum="1"></meter>'
+      + '<span class="src-p">' + head[2] + "——部署前请先确认备份与回滚路径…</span>"
+      + '<span class="link">查看原文<svg class="ic ic-xs"><use href="#i-arrow-up-right"/></svg></span></button>';
+    li.querySelector(".src-t").textContent = pages[pages.length - 1][0];
+    // 与 similarity.js 的 meterValue 一致：条形夹到 [0,1]，文字仍是真实余弦值
+    li.querySelector("meter").value = Math.min(1, Math.max(0, score));
+    el.srcs.appendChild(li);
+    li.classList.add("on");
+  }
+
+  async function type(node, text, masked){
+    node.classList.add("typed");
+    // input 上没有 textContent 可言，必须写 value，否则"打字"看不见
+    var box = "value" in node;
+    if (box) node.value = ""; else node.textContent = "";
+    for (var i = 0; i < text.length; i++){
+      var piece = masked ? "•" : text[i];
+      if (box) node.value += piece; else node.textContent += piece;
+      await A.wait(masked ? 12 : 20);
+    }
+  }
+
+  async function runDemo(){
+    await sceneConfig();
+    await sceneProject();
+    await sceneAsk();
+  }
+  function playA(){ el.body.innerHTML = ""; runDemo().catch(function(){}); }
+  window.__playA = playA;
+
+  /* ============ 对话图：节点逐个高亮 ============ */
+  var B = makeRunner();
+  var names = ["context","decide","retrieve","evidence","rewrite","answer","validate"];
+  var lit = 0;
+  function nodeEl(k){ return document.querySelector('.nd[data-k="' + k + '"]'); }
+  function branchEl(b){ return document.querySelector('.br[data-b="' + b + '"]'); }
+  function mark(k, cls){
+    names.forEach(function(n){
+      var g = nodeEl(n); if (!g) return;
+      var halo = g.querySelector(".halo"), rect = g.querySelector("rect");
+      if (n === k){
+        halo.setAttribute("opacity", cls === "running" ? "1" : "0");
+        rect.setAttribute("fill", cls === "running" ? "#e8f4ed" : "#e8f4ed");
+        rect.setAttribute("stroke", cls ? "#1f9d55" : "#e3e8e5");
+      } else if (cls === "running" || n !== k){
+        var done = names.indexOf(n) < names.indexOf(k);
+        halo.setAttribute("opacity", "0");
+        rect.setAttribute("fill", done ? "#f2f8f4" : "#f6f8f7");
+        rect.setAttribute("stroke", done ? "#1f9d55" : "#e3e8e5");
+      }
+    });
+  }
+  var litStep = 0;
+  function lightTrunk(){                       // 按实际走到的第几个节点推进主干
+    var line = $("lit-trunk");
+    if (line) line.style.strokeDashoffset = String(792 - Math.min(litStep, 6) * 132);
+  }
+  function lightBr(b, on){
+    var p = branchEl(b); if (!p) return;
+    p.setAttribute("stroke", on ? "#1f9d55" : "#e3e8e5");
+    p.setAttribute("marker-end", on ? "url(#ahg)" : "url(#ah)");
+  }
+  var bSay = {
+    context:  ["CONTEXT", "准备会话上下文", "取本请求之前成功完成的问答，最多 12 轮、12000 字符预算，加上本次问题一起交给模型。"],
+    decide:   ["DECIDE", "理解问题与决策", "输出 direct / clarify / retrieve 三选一。追问会先被改写成能独立成句的检索问题。"],
+    retrieve: ["RETRIEVE", "检索与重排", "pgvector 召回 20 个候选 chunk，再用 cross-encoder 重排取 3 个。重排模型自己限制查询长度，不挤占正文预算。"],
+    evidence: ["EVIDENCE", "检查证据", "逐条核对用户问题的关键条件是否被覆盖。没有新证据或检索本身失败时，直接进入回答。"],
+    rewrite:  ["REWRITE", "改写查询并补查", "只针对缺口写一条新查询。同一查询再问一次或没有新命中就不会重试，最多补一轮。"],
+    answer:   ["ANSWER", "生成回答", "涉及资料的事实只依据本轮片段，每项结论紧邻标注 [S1] 这样的真实编号；证据只覆盖一部分就只答那部分。"],
+    validate: ["VALIDATE", "检查引用", "编号不在来源集合里的引用会被剥掉；检索到资料却一个有效引用都没有，就换成提示而不是硬答。"]
+  };
+  function say(k){
+    var d = bSay[k]; if (!d) return;
+    $("bNow").textContent = d[0];
+    $("bHead").textContent = d[1];
+    $("bDesc").textContent = d[2];
+    [].slice.call(document.querySelectorAll(".say-list li")).forEach(function(li){
+      li.classList.toggle("on", li.dataset.k === k);
+    });
+  }
+  function resetB(){
+    B.token++;
+    names.forEach(function(n){
+      var g = nodeEl(n); if (!g) return;
+      g.querySelector(".halo").setAttribute("opacity", "0");
+      g.querySelector("rect").setAttribute("fill", "#f6f8f7");
+      g.querySelector("rect").setAttribute("stroke", "#e3e8e5");
+    });
+    ["d2r","e2r","r2ret","d2a"].forEach(function(b){ lightBr(b, false); });
+    litStep = 0;
+    if ($("lit-trunk")) $("lit-trunk").style.strokeDashoffset = "792";
+    [].slice.call(document.querySelectorAll(".say-list li")).forEach(function(li){ li.classList.remove("on"); });
+    $("bNow").textContent = "等待开始";
+    $("bHead").textContent = "先决策，再决定要不要查资料";
+    $("bDesc").textContent = "左边演示走到哪一步，右边就亮到哪个节点。";
+  }
+  /* 由左侧演示驱动：走到哪个真实节点，右边就点亮哪个 */
+  function syncNode(k){
+    if (!nodeEl(k)) return;
+    if (k === "context") resetB();
+    if (k === "retrieve" && litStep > 0) lightBr("r2ret", true);
+    else if (k === "retrieve") lightBr("d2r", true);
+    litStep = Math.min(litStep + 1, 6);
+    mark(k, "running"); say(k); lightTrunk();
+  }
+  function finishNote(){
+    $("bNow").textContent = "完成";
+    $("bHead").textContent = "本轮结束，结果落库";
+    $("bDesc").textContent = "回答连同命中资料和实际步骤一起写入数据库，再由 SSE 的 done 事件对齐终态。";
+  }
+
+  /* ============ 控制与自动播放 ============ */
+  // 暂停键只换图标 use 的目标与文字，不重建节点，避免丢失事件绑定
+  function setPauseUI(btn, paused){
+    var use = btn.querySelector("use");
+    var label = btn.querySelector("span");
+    if (use) use.setAttribute("href", paused ? "#i-play" : "#i-pause");
+    if (label) label.textContent = paused ? "继续" : "暂停";
+    btn.setAttribute("aria-label", paused ? "继续播放演示" : "暂停演示");
+  }
+  function bind(pauseId, replayId, player, runner){
+    $(pauseId).addEventListener("click", function(){
+      runner.paused = !runner.paused;
+      setPauseUI(this, runner.paused);
+    });
+    $(replayId).addEventListener("click", function(){
+      runner.paused = false;
+      setPauseUI($(pauseId), false);
+      player();
+    });
+  }
+  bind("aPause", "aReplay", playA, A);
+
+  function autoPlay(id, player){
+    var sec = $(id);
+    if (!sec || !("IntersectionObserver" in window)){ player(); return; }
+    var fired = false;
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if (e.isIntersecting && !fired){ fired = true; player(); io.disconnect(); }
+      });
+    }, { threshold: 0.25 });
+    io.observe(sec);
+  }
+  autoPlay("demo", playA);
+
+  /* 顶栏 scroll-spy */
+  (function(){
+    var links = [].slice.call(document.querySelectorAll(".topnav nav a"));
+    var map = {};
+    links.forEach(function(a){
+      var id = a.getAttribute("href").slice(1);
+      if ($(id)) map[id] = a;
+    });
+    var ids = Object.keys(map);
+    if (!ids.length || !("IntersectionObserver" in window)) return;
+    var vis = {};
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){ vis[e.target.id] = e.isIntersecting ? e.intersectionRatio : 0; });
+      var best = null, bv = 0;
+      ids.forEach(function(id){ if ((vis[id] || 0) > bv){ bv = vis[id]; best = id; } });
+      links.forEach(function(a){ a.classList.remove("active"); });
+      if (best && map[best]) map[best].classList.add("active");
+    }, { rootMargin: "-45% 0px -45% 0px", threshold: [0, .25, .5, 1] });
+    ids.forEach(function(id){ io.observe($(id)); });
+  })();
+})();
+</script>
+</body>
+</html>
