@@ -4,7 +4,7 @@
 这类业务规则，而不是单条 SQL；worker 也复用这里的读取逻辑拿到生效配置。
 """
 import asyncpg
-import httpx
+from openai import AsyncOpenAI
 
 from app.config import get_settings
 from app.repositories import llm_config as repo
@@ -53,12 +53,8 @@ async def list_models(base_url: str, api_key: str) -> list[str]:
     为什么后端代理而不前端直连：密钥不该出现在浏览器里，且能规避跨域；
     OpenAI 兼容服务统一是 GET /models，自定义地址/DeepSeek 都走同一路径。
     """
-    async with httpx.AsyncClient(timeout=15) as client:
-        resp = await client.get(
-            base_url.rstrip("/") + "/models",
-            headers={"Authorization": f"Bearer {api_key}"},
-        )
-        resp.raise_for_status()
-        data = resp.json()
-    # OpenAI 兼容返回 {"data": [{"id": "..."}, ...]}，只取 id
-    return [m["id"] for m in data.get("data", []) if "id" in m]
+    # 用 openai SDK 自带的 models.list()，不手拼 URL 和鉴权头；和 ChatOpenAI 是同一个客户端。
+    # max_retries=0：保持原来“失败立刻告诉前端”的行为，不让用户等 SDK 默认的重试。
+    async with AsyncOpenAI(base_url=base_url, api_key=api_key, timeout=15, max_retries=0) as client:
+        page = await client.models.list()
+    return [m.id for m in page.data]

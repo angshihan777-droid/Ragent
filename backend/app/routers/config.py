@@ -1,6 +1,6 @@
 """LLM 配置路由：保持薄，只收发参数，读写/播种/拉模型逻辑在 llm_config service。"""
 import asyncpg
-import httpx
+import openai
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.db import get_pool
@@ -45,7 +45,7 @@ async def list_llm_models(
         api_key = cfg["api_key"]
     try:
         models = await svc.list_models(body.base_url, api_key)
-    except httpx.HTTPError as e:
+    except openai.OpenAIError as e:
         # 上游地址/密钥不对时给前端明确 400，而不是 500 内部错
         raise HTTPException(status_code=400, detail=f"拉取模型失败: {e}")
     return ListModelsOut(models=models)

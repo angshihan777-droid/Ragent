@@ -1,7 +1,7 @@
 """应用配置：全部从环境变量读取，避免把地址、密码写死在代码里。"""
 from functools import lru_cache
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # 精简版：单用户、无登录，故 user 写成常量。
 # 固定执行身份保留队列契约；产品没有 Agent 配置或选择。
@@ -10,6 +10,9 @@ KNOWLEDGE_AGENT_ID = "knowledge-base"
 
 
 class Settings(BaseSettings):
+    # pydantic v2 写法：用 model_config 代替旧的 class Config
+    model_config = SettingsConfigDict(env_file=".env")
+
     # PostgreSQL 连接串，compose 内通过服务名 postgres 互联
     database_url: str = "postgresql://ragent:ragent@postgres:5432/ragent"
     # Redis 连接串：运行队列与请求事件通道
@@ -28,9 +31,6 @@ class Settings(BaseSettings):
 
     # RAG rerank：两阶段检索的精排模型，同样走本地 fastembed(cross-encoder)。
     rerank_model: str = "BAAI/bge-reranker-base"
-
-    class Config:
-        env_file = ".env"
 
 
 @lru_cache

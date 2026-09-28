@@ -44,17 +44,15 @@ async def _heartbeat_loop(pool, run_id, owner):
 async def _execute(pool, redis, thread_id, request_id, question, project_id):
     parts, sources, steps = [], [], {}
     buffered = []
-    # 实时增量只服务于"正在打字"的观感；发布失败不能连带把已经跑起来的回答打断，
-    # 所以增量走 _notify（吞掉 Redis 故障），而终态在事务提交后照常发布。
-    async def on_token(piece):
-        buffered.append(piece)
-        if sum(len(p) for p in buffered) >= 48:
-            chunk, buffered[:] = "".join(buffered), []
-            await _notify(publish_token, redis, request_id, chunk)
-
-    async for kind, data in stream_agent(question, pool, project_id, thread_id, request_id,
-                                         on_token=on_token):
-        if kind == "step":
+    async for kind, data in stream_agent(question, pool, project_id, thread_id, request_id):
+        if kind == "token":
+            # 实时增量只服务于"正在打字"的观感；发布失败不能连带把已经跑起来的回答打断，
+            # 所以增量走 _notify（吞掉 Redis 故障），而终态在事务提交后照常发布。
+            buffered.append(data)
+            if sum(len(p) for p in buffered) >= 48:
+                chunk, buffered[:] = "".join(buffered), []
+                await _notify(publish_token, redis, request_id, chunk)
+        elif kind == "step":
             steps[data["key"]] = data
             await _notify(publish_step, redis, request_id, data)
         elif kind == "sources":

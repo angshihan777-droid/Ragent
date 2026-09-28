@@ -70,7 +70,7 @@ async def recovery(pool, project):
     # Actual PG/Redis; deterministic agent avoids provider variance in recovery tests.
     async def deterministic_agent(*args):
         await asyncio.sleep(0.05)
-        yield "token", "隔离恢复验证回答"
+        yield "final", "隔离恢复验证回答"
 
     _, request, run = await new_case(pool, project)
     with patch.object(worker, "stream_agent", deterministic_agent):
