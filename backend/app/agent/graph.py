@@ -4,7 +4,7 @@ import json
 import re
 from typing import Literal, TypedDict
 
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage, convert_to_messages, trim_messages
 from langchain_core.runnables import RunnableConfig
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
@@ -15,6 +15,12 @@ from app.repositories.messages import history_before_request
 from app.services import llm_config, rag
 
 MAX_RETRIEVAL_ROUNDS = 2
+HISTORY_CHAR_BUDGET = 12000
+
+
+def _count_chars(messages) -> int:
+    """按字符数计量（近似 token），和原来的手写预算保持一致。"""
+    return sum(len(m.content) for m in messages)
 
 
 class Decision(BaseModel):
@@ -58,15 +64,17 @@ async def _context(state, config):
     cfg = config["configurable"]
     async with cfg["pool"].acquire() as conn:
         history = await history_before_request(conn, cfg["thread_id"], cfg["request_id"])
-    messages, budget = [], 12000
-    for row in reversed(history):
-        text = row["content"]
-        if len(text) > budget:
-            break
-        budget -= len(text)
-        cls = HumanMessage if row["role"] == "user" else AIMessage
-        messages.append(cls(content=text))
-    messages.reverse()
+    # 1. 打标签：数据库的 role 字符串 → LangChain 消息对象（user→Human，assistant→AI）
+    past = convert_to_messages([{"role": r["role"], "content": r["content"]} for r in history])
+    # 2. 截断：从最新往回保留，总字符数不超过 12000；开头不能是孤立的 AI 回复
+    messages = trim_messages(
+        past,
+        max_tokens=HISTORY_CHAR_BUDGET,
+        strategy="last",
+        token_counter=_count_chars,
+        start_on="human",
+    )
+    # 3. 拼接：本次问题放在最后，不参与截断
     messages.append(HumanMessage(content=state["question"]))
     return {"messages": messages, "sources": [], "queries": [], "rounds": 0}
 
