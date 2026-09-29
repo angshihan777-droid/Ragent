@@ -7,11 +7,11 @@ from app.routers import config, documents, health, projects, requests, threads
 
 app = FastAPI(title="Ragent", lifespan=lifespan)
 
-# 本地开发决策：前端 Vite 与后端不同端口(源不同)，浏览器会拦跨域请求，
-# 故开放 CORS。单机个人项目只在本地跑，直接放开所有源，不做成配置项。
+# 前端默认走 Vite 同源代理 /api，不需要 CORS；这里只给直连后端的本地开发页放行。
+# 不用 "*"：任意网页都能调本机 API（项目无鉴权），白名单把风险收窄到本地前端。
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
     allow_methods=["*"],
     allow_headers=["*"],
 )

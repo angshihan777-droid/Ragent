@@ -4,6 +4,7 @@
 离线、免费、稳定，还省掉外部 API 的网络抖动与配额限制。
 """
 import asyncio
+import threading
 
 from fastembed import TextEmbedding
 
@@ -11,13 +12,17 @@ from app.config import get_settings
 
 # 进程级懒加载单例：模型加载慢(要读 ONNX 权重)，只在首次用到时加载一次并复用。
 _MODEL: TextEmbedding | None = None
+# worker 会并发跑多个请求（多个线程同时进来），加锁保证模型只加载一次
+_LOCK = threading.Lock()
 
 
 def _get_model() -> TextEmbedding:
     """首次调用时加载模型，之后复用同一实例。"""
     global _MODEL
     if _MODEL is None:
-        _MODEL = TextEmbedding(model_name=get_settings().embedding_model)
+        with _LOCK:
+            if _MODEL is None:  # 双重检查：拿到锁后再确认一次，别的线程可能已经加载好
+                _MODEL = TextEmbedding(model_name=get_settings().embedding_model)
     return _MODEL
 
 

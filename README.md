@@ -100,6 +100,18 @@ Ragent/
 └─ docker-compose.yml  开发拓扑：一条命令拉起三件套
 ```
 
+## 测试
+
+纯逻辑单元测试（不连数据库、Redis 和模型）：
+
+```bash
+cd backend
+pip install -r requirements-dev.txt
+python -m pytest -q
+```
+
+横向扩容 worker：`docker compose up -d --scale worker=3`。每个 worker 进程内默认并发 4 个 run，同一会话仍严格串行。
+
 ## 评测
 
 产品运行时不加载测试/演示资料。`evaluation/` 单独保留合成检索语料、隔离故障注入脚本和真实运行记录；评测使用临时数据库及独立 Redis 队列，不向真实项目插入资料。复现方式见 `evaluation/README.md`，结果与限制见 `evaluation/REPORT.md`。

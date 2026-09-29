@@ -127,3 +127,23 @@ END $$;
 
 -- 编辑采用版本校验，避免多个页面静默覆盖同一份资料。
 ALTER TABLE documents ADD COLUMN IF NOT EXISTS revision UUID NOT NULL DEFAULT gen_random_uuid();
+
+-- 执行次数上限：每次 worker 认领 +1，reaper 回收时超过上限就判失败，防止毒消息无限重投卡死同组队列。
+ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS attempts INTEGER NOT NULL DEFAULT 0;
+-- 成本统计：一次执行里所有模型调用的 token 用量与调用次数（框架 usage_metadata 汇总）。
+ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS usage JSONB;
+
+-- 常用查询补索引，避免随数据增长走全表扫描。
+-- 会话回放 / 历史上下文：按会话取消息并按时间排序
+CREATE INDEX IF NOT EXISTS idx_messages_thread_created ON messages (thread_id, created_at);
+-- SSE 补读、历史上下文：按请求找 assistant 回复
+CREATE INDEX IF NOT EXISTS idx_messages_request ON messages (request_id);
+-- 按请求找 run（失败回放、删除清理）
+CREATE INDEX IF NOT EXISTS idx_runs_request ON agent_runs (request_id);
+-- reaper 每 5 秒扫一次：只扫未结束的 run
+CREATE INDEX IF NOT EXISTS idx_runs_active ON agent_runs (status, heartbeat_at) WHERE status IN ('pending', 'running');
+-- 检索时按文档取块、删文档级联
+CREATE INDEX IF NOT EXISTS idx_chunks_document ON chunks (document_id);
+-- 向量近似检索：HNSW 按余弦距离建索引，查询不再逐块算距离。
+-- 取舍：HNSW 先取近似近邻再按项目过滤，项目很多时返回数可能少于 LIMIT（面试可讲的"过滤式向量检索"问题）。
+CREATE INDEX IF NOT EXISTS idx_chunks_embedding_hnsw ON chunks USING hnsw (embedding vector_cosine_ops);

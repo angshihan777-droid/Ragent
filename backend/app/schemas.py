@@ -29,8 +29,9 @@ class RequestOut(BaseModel):
 class IngestDocumentIn(BaseModel):
     """文档入库入参：资料归属项目，给项目 id、标题和正文，切块向量化由后端做。"""
     project_id: UUID
-    title: str
-    content: str
+    # 限制长度：防止一次塞进超大文本把切块和向量化卡死（上传文件另有 20MB 限制）
+    title: str = Field(min_length=1, max_length=500)
+    content: str = Field(min_length=1, max_length=2_000_000)
 
 
 class IngestDocumentOut(BaseModel):
@@ -127,7 +128,7 @@ class DocumentDetailOut(DocumentOut):
 
 class UpdateDocumentIn(BaseModel):
     title: str = Field(min_length=1, max_length=500)
-    content: str = Field(min_length=1)
+    content: str = Field(min_length=1, max_length=2_000_000)
     revision: UUID
 
     @field_validator("title", "content")
