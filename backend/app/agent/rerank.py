@@ -8,6 +8,7 @@
 一样本地 ONNX、离线免费，不引新依赖。
 """
 import asyncio
+import threading
 
 from fastembed.rerank.cross_encoder import TextCrossEncoder
 from tokenizers import Tokenizer
@@ -16,24 +17,32 @@ from app.config import get_settings
 
 # 进程级懒加载单例：模型加载慢(读 ONNX 权重)，首次用到时加载一次并复用。
 _MODEL: TextCrossEncoder | None = None
+# 截断查询用的 tokenizer 副本：只需克隆一次，不必每次打分都复制
+_QUERY_TOKENIZER: Tokenizer | None = None
+# worker 会并发跑多个请求（多个线程同时进来），加锁保证模型只加载一次
+_LOCK = threading.Lock()
 
 
 def _get_model() -> TextCrossEncoder:
-    """首次调用时加载 reranker 模型，之后复用同一实例。"""
-    global _MODEL
+    """首次调用时加载 reranker 模型和截断用 tokenizer，之后复用同一实例。"""
+    global _MODEL, _QUERY_TOKENIZER
     if _MODEL is None:
-        _MODEL = TextCrossEncoder(model_name=get_settings().rerank_model)
+        with _LOCK:
+            if _MODEL is None:  # 双重检查：拿到锁后再确认一次
+                model = TextCrossEncoder(model_name=get_settings().rerank_model)
+                tokenizer = Tokenizer.from_str(model.model.tokenizer.to_str())
+                tokenizer.no_truncation()
+                tokenizer.no_padding()
+                _QUERY_TOKENIZER = tokenizer
+                _MODEL = model
     return _MODEL
 
 
 def _rerank_sync(query: str, docs: list[str]) -> list[float]:
     """同步为每个候选块打分：分数越高越相关。"""
     model = _get_model()
-    # 用重排模型自己的 tokenizer 限制长查询，给正文留下预算；不改共享 tokenizer。
-    tokenizer = Tokenizer.from_str(model.model.tokenizer.to_str())
-    tokenizer.no_truncation()
-    tokenizer.no_padding()
-    encoded = tokenizer.encode(query, add_special_tokens=False)
+    # 用重排模型自己的 tokenizer（缓存的副本）限制长查询，给正文留下预算；不改共享 tokenizer。
+    encoded = _QUERY_TOKENIZER.encode(query, add_special_tokens=False)
     if len(encoded.ids) > 96:
         query = query[:encoded.offsets[95][1]]
     return list(model.rerank(query, docs))

@@ -3,6 +3,8 @@
 一次执行的生命周期：create_run 抢占 → heartbeat 续约 → finish_run 收尾。
 函数只写单条 SQL，租约是否过期、能否接管由上层调度判断。
 """
+import json
+
 import asyncpg
 
 
@@ -35,35 +37,41 @@ async def claim_run(
     return await conn.fetchrow(
         """
         UPDATE agent_runs
-        SET status = 'running', lease_owner = $2, heartbeat_at = now()
+        SET status = 'running', lease_owner = $2, heartbeat_at = now(), attempts = attempts + 1
         WHERE id = $1 AND status = 'pending'
-        RETURNING id, request_id, status
+        RETURNING id, request_id, status, attempts
         """,
         run_id,
         lease_owner,
     )
 
 
-async def heartbeat(conn: asyncpg.Connection, run_id, lease_owner: str) -> None:
-    """worker 定时续约：只有持租者能刷新心跳，避免误续别人的 run。"""
-    await conn.execute(
+async def heartbeat(conn: asyncpg.Connection, run_id, lease_owner: str) -> bool:
+    """worker 定时续约：只有持租者能刷新心跳，避免误续别人的 run。
+
+    一条 UPDATE ... RETURNING 同时完成「续约」和「确认租约还在」，
+    返回 False 表示租约已被接管或 run 已结束。
+    """
+    row = await conn.fetchrow(
         """
         UPDATE agent_runs
         SET heartbeat_at = now()
         WHERE id = $1 AND lease_owner = $2 AND status = 'running'
+        RETURNING id
         """,
         run_id,
         lease_owner,
     )
+    return row is not None
 
 
-async def finish_run(conn, run_id, status, error, lease_owner) -> bool:
+async def finish_run(conn, run_id, status, error, lease_owner, usage=None) -> bool:
     """Fence the commit with the unique attempt owner; callers must use a transaction."""
     row = await conn.fetchrow("""
-        UPDATE agent_runs SET status=$2, error=$3
+        UPDATE agent_runs SET status=$2, error=$3, usage=COALESCE($5::jsonb, usage)
         WHERE id=$1 AND status='running' AND lease_owner=$4
         RETURNING id
-    """, run_id, status, error, lease_owner)
+    """, run_id, status, error, lease_owner, json.dumps(usage) if usage is not None else None)
     return row is not None
 
 
@@ -104,8 +112,26 @@ async def get_run(conn: asyncpg.Connection, run_id) -> asyncpg.Record | None:
         run_id,
     )
 
+async def exhausted_runs(conn: asyncpg.Connection, lease_timeout_seconds: int, max_attempts: int) -> list:
+    """心跳已停、且已执行满 max_attempts 次的 run：不再重投，交给上层判失败。
+
+    毒消息防护：某个请求每次都让 worker 崩溃时，无限重投会让同组后面的请求永远排不上。
+    返回 run_id 和当时的 lease_owner，上层用 lease_owner 做 fencing 收尾。
+    """
+    return await conn.fetch(
+        """
+        SELECT id, lease_owner FROM agent_runs
+        WHERE status = 'running' AND lease_owner IS NOT NULL
+          AND heartbeat_at < now() - make_interval(secs => $1)
+          AND attempts >= $2
+        """,
+        lease_timeout_seconds,
+        max_attempts,
+    )
+
+
 async def reap_expired_leases(
-    conn: asyncpg.Connection, lease_timeout_seconds: int
+    conn: asyncpg.Connection, lease_timeout_seconds: int, max_attempts: int = 1_000_000
 ) -> list:
     """接管两类孤儿 run：打回 pending 并返回需重投的 run_id 列表。
 
@@ -120,19 +146,23 @@ async def reap_expired_leases(
     rows = await conn.fetch(
         """
         UPDATE agent_runs
-        SET status = 'pending', lease_owner = NULL
+        SET status = 'pending', lease_owner = NULL, heartbeat_at = now()
         WHERE (
                 status = 'running'
                 AND lease_owner IS NOT NULL
                 AND heartbeat_at < now() - make_interval(secs => $1)
+                AND attempts < $2
               )
            OR (
                 status = 'pending'
-                AND created_at < now() - make_interval(secs => $1)
+                -- 回收时把 heartbeat_at 记成"最近一次投递时间"：同一个 run 每个超时窗口最多重投一次，
+                -- 不会在 worker 忙时每轮扫描都往队列里再塞一份
+                AND COALESCE(heartbeat_at, created_at) < now() - make_interval(secs => $1)
               )
         RETURNING id
         """,
         lease_timeout_seconds,
+        max_attempts,
     )
     return [r["id"] for r in rows]
 
