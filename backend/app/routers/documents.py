@@ -1,4 +1,9 @@
-"""文档路由：保持薄，只收发参数，切块/向量化/落库在 rag service。"""
+"""文档路由：保持薄，只收发参数，切块/向量化/落库在 rag service。
+
+归属校验：路径上带 document_id 的挂 require_owned_document；project_id 来自
+body / Form / query 三种位置的，用 assert_owned_project 在函数里显式验一次。
+资料正文与项目同属一条归属链（documents.project_id → projects.owner_id），不另挂 owner 列。
+"""
 import asyncio
 import hashlib
 from uuid import UUID
@@ -7,8 +12,9 @@ import asyncpg
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 from app.db import get_pool
+from app.deps import assert_owned_project, get_owner_id, require_owned_document
 from app.schemas import DocumentOut, DocumentDetailOut, UpdateDocumentIn, IngestDocumentIn, IngestDocumentOut
-from app.services import attachments, rag, projects
+from app.services import attachments, rag
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -16,11 +22,12 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 @router.post("", response_model=IngestDocumentOut, status_code=201)
 async def ingest_document(
     body: IngestDocumentIn,
+    owner_id: str = Depends(get_owner_id),
     pool: asyncpg.Pool = Depends(get_pool),
 ):
     """文档入库：切块→向量化→落库（归属 body.project_id），返回文档 id 和块数。"""
-    if await projects.get_project(pool, body.project_id) is None:
-        raise HTTPException(status_code=404, detail="project not found")
+    # 项目不存在与不归自己合并成同一个 404：入库前就挡住，别把向量化算力花在别人项目上
+    await assert_owned_project(pool, body.project_id, owner_id)
     if not body.content.strip() or not body.title.strip():
         raise HTTPException(status_code=400, detail="标题和正文不能为空")
     document_id, chunk_count = await rag.ingest_document(
@@ -28,12 +35,12 @@ async def ingest_document(
     )
     return IngestDocumentOut(document_id=document_id, chunk_count=chunk_count)
 
-
 @router.post("/upload", response_model=IngestDocumentOut, status_code=201)
 async def upload_document(
     project_id: UUID = Form(...),
     file: UploadFile = File(...),
     title: str | None = Form(None),
+    owner_id: str = Depends(get_owner_id),
     pool: asyncpg.Pool = Depends(get_pool),
 ):
     """上传文件入库：支持 PDF/Word(.docx)/Markdown/纯文本，解析成文本后走同一条入库链路。
@@ -42,8 +49,9 @@ async def upload_document(
     切块向量化落库仍复用 rag.ingest_document，不另起一套逻辑。
     标题缺省用文件名，方便检索命中时溯源到具体来源文件。
     """
-    if await projects.get_project(pool, project_id) is None:
-        raise HTTPException(status_code=404, detail="project not found")
+    # 归属校验刻意放在 file.read() 之前：越权请求不该先把 20 MB 读进内存，
+    # 否则任何人拿一个别人的 project_id 就能反复打满这台机器的内存带宽。
+    await assert_owned_project(pool, project_id, owner_id)
     raw = await file.read(20 * 1024 * 1024 + 1)
     if len(raw) > 20 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="文件大小不能超过 20 MB")
@@ -61,15 +69,19 @@ async def upload_document(
 @router.get("", response_model=list[DocumentOut])
 async def list_documents(
     project_id: UUID,
+    owner_id: str = Depends(get_owner_id),
     pool: asyncpg.Pool = Depends(get_pool),
 ):
-    """列出某项目的资料（标题+块数），供资料管理页展示。"""
-    return await rag.list_documents(pool, project_id)
+    """列出某项目的资料（标题+块数），供资料管理页展示。
 
+    这里的 project_id 在 query 上，不校验就是一个「换个 id 就能看别人资料标题」的枚举接口。
+    """
+    await assert_owned_project(pool, project_id, owner_id)
+    return await rag.list_documents(pool, project_id)
 
 @router.delete("/{document_id}", status_code=204)
 async def delete_document(
-    document_id: UUID,
+    document_id: UUID = Depends(require_owned_document),
     pool: asyncpg.Pool = Depends(get_pool),
 ):
     """删一篇资料（chunks 级联删除）。"""
@@ -78,7 +90,11 @@ async def delete_document(
 
 
 @router.get("/{document_id}", response_model=DocumentDetailOut)
-async def get_document(document_id: UUID, pool: asyncpg.Pool = Depends(get_pool)):
+async def get_document(
+    document_id: UUID = Depends(require_owned_document),
+    pool: asyncpg.Pool = Depends(get_pool),
+):
+    """读一篇资料正文，供资料编辑页回显。"""
     document = await rag.get_document(pool, document_id)
     if document is None:
         raise HTTPException(status_code=404, detail="资料不存在或已被删除")
@@ -86,7 +102,15 @@ async def get_document(document_id: UUID, pool: asyncpg.Pool = Depends(get_pool)
 
 
 @router.put("/{document_id}", response_model=DocumentDetailOut)
-async def update_document(document_id: UUID, body: UpdateDocumentIn, pool: asyncpg.Pool = Depends(get_pool)):
+async def update_document(
+    body: UpdateDocumentIn,
+    document_id: UUID = Depends(require_owned_document),
+    pool: asyncpg.Pool = Depends(get_pool),
+):
+    """改一篇资料（乐观并发，revision 不匹配回 409）。
+
+    body 写在最前面是 Python 的形参规则要求：带默认值的 Depends 只能排在无默认值的参数之后。
+    """
     try:
         document = await rag.update_document(pool, document_id, body.title, body.content, body.revision)
     except rag.DocumentConflict as exc:

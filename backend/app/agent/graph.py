@@ -54,8 +54,13 @@ class AgentState(TypedDict, total=False):
     response: str
 
 
-async def _build_llm(pool):
-    cfg = await llm_config.get_effective_config(pool)
+async def _build_llm(pool, owner_id: str):
+    """按「谁在提问」取配置建模型客户端。
+
+    owner_id 必须显式传进来而不是在函数里推断：worker 是后台进程，没有请求上下文，
+    它只能从 run 所属请求的 user_id 拿到身份。参数化后 api / worker 两条路径共用同一套逻辑。
+    """
+    cfg = await llm_config.get_effective_config(pool, owner_id)
     if not all(str(cfg.get(key) or "").strip() for key in ("base_url", "api_key", "model")):
         raise ValueError("请先在模型配置中填写服务地址、模型名称和 API Key")
     return ChatOpenAI(base_url=cfg["base_url"], api_key=cfg["api_key"],
@@ -219,9 +224,10 @@ STEP_LABELS = {"context": "准备会话上下文", "decide": "理解问题与决
                "evidence": "检查证据", "rewrite": "改写查询并补查", "answer": "生成回答", "validate": "检查引用"}
 
 
-async def stream_agent(question, pool, project_id, thread_id, request_id):
+async def stream_agent(question, pool, project_id, thread_id, request_id, owner_id):
     # 一次请求只读一次配置、建一个模型客户端，各节点从 configurable 里取，不再每个节点重建。
-    model = await _build_llm(pool)
+    # owner_id 决定用谁的模型配置：配置按身份隔离，不能退回到「全局唯一一份」。
+    model = await _build_llm(pool, owner_id)
     config = {"recursion_limit": 16, "configurable": {
         "pool": pool, "project_id": project_id, "thread_id": thread_id, "request_id": request_id,
         "model": model}}

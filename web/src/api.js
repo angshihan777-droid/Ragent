@@ -21,12 +21,18 @@ async function toJson(res) {
   return res.json();
 }
 
+// 身份放在 httpOnly Cookie 里，跨源请求默认不带 Cookie，所以每个出口都要 credentials: "include"。
+// 收在 get/send 两个函数里就是为了不用在几十个调用点上各写一遍——唯一的例外是
+// uploadDocument 的裸 fetch（multipart 不能用 send），那里单独补一份。
+const CREDENTIALS = "include";
+
 function get(path) {
-  return fetch(BASE + path).then(toJson);
+  return fetch(BASE + path, { credentials: CREDENTIALS }).then(toJson);
 }
 function send(method, path, body) {
   return fetch(BASE + path, {
     method,
+    credentials: CREDENTIALS,
     headers: { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   }).then(toJson);
@@ -54,7 +60,9 @@ export const api = {
     fd.append("project_id", projectId);
     fd.append("file", fileObj);
     if (title) fd.append("title", title);
-    return fetch(BASE + "/documents/upload", { method: "POST", body: fd }).then(toJson);
+    // 这处是全文件唯一不走 send() 的请求（multipart 不能自己设 Content-Type），
+    // credentials 必须手动补：漏了就是「上传返回 404 项目不存在」
+    return fetch(BASE + "/documents/upload", { method: "POST", credentials: CREDENTIALS, body: fd }).then(toJson);
   },
   getDocument: (id) => get("/documents/" + id),
   updateDocument: (id, body) => send("PUT", "/documents/" + id, body),
@@ -71,4 +79,9 @@ export const api = {
     send("PUT", "/config/llm", { base_url, model, api_key: api_key || null }),
   listModels: (base_url, api_key) =>
     send("POST", "/config/llm/models", { base_url, api_key: api_key || null }),
+
+  // ---- 身份（§3.7 身份可迁移） ----
+  // Cookie 是 httpOnly 的，前端读不到，只能问后端「我是谁」
+  getIdentity: () => get("/config/identity"),
+  switchIdentity: (owner_id) => send("POST", "/config/identity", { owner_id }),
 };

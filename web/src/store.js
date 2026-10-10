@@ -16,6 +16,11 @@ export const store = reactive({
   llm: { base_url: "", model: "", key_set: false },
   models: [],
 
+  // 当前身份 id：只做展示与迁移用。
+  // 为什么要存一份在前端：身份本体在 httpOnly Cookie 里，JS 读不到，
+  // 想在界面上显示「你是谁」只能靠后端接口回一次再缓存，不能从 document.cookie 取。
+  ownerId: "",
+
   get currentProject() {
     return this.projects.find((p) => p.id === this.currentProjectId) || null;
   },
@@ -82,6 +87,24 @@ export const store = reactive({
     if (this.llm.model && !this.models.includes(this.llm.model)) {
       this.models = [this.llm.model, ...this.models];
     }
+  },
+
+  async loadIdentity() {
+    const { owner_id } = await api.getIdentity();
+    this.ownerId = owner_id;
+  },
+
+  async switchIdentity(ownerId) {
+    // 切换后本地缓存的项目/会话全是上一个身份的，必须整体重载，
+    // 否则界面上还留着旧列表，点进去却 404，看着像后端坏了
+    const { owner_id } = await api.switchIdentity(ownerId);
+    this.ownerId = owner_id;
+    this.currentProjectId = null;
+    this.currentThreadId = null;
+    this.threads = [];
+    this.threadsByProject = {};
+    await this.loadProjects();
+    await this.loadLLM();
   },
 
   async switchModel(model) {

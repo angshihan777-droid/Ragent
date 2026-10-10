@@ -44,10 +44,12 @@ async def _heartbeat_loop(pool, run_id, owner):
                 raise RuntimeError("lease lost")
 
 
-async def _execute(pool, redis, thread_id, request_id, question, project_id):
+async def _execute(pool, redis, thread_id, request_id, question, project_id, owner_id):
     parts, sources, steps, usage = [], [], {}, None
     buffered = []
-    async for kind, data in stream_agent(question, pool, project_id, thread_id, request_id):
+    # owner_id 取自 run 所属请求的 user_id：worker 没有 HTTP 上下文，拿不到 Cookie，
+    # 身份只能顺着 run → request 这条链子带下来，否则会退回「全局共用一份模型配置」。
+    async for kind, data in stream_agent(question, pool, project_id, thread_id, request_id, owner_id):
         if kind == "token":
             # 实时增量只服务于"正在打字"的观感；发布失败不能连带把已经跑起来的回答打断，
             # 所以增量走 _notify（吞掉 Redis 故障），而终态在事务提交后照常发布。
@@ -101,7 +103,7 @@ async def _handle_run(pool, redis, run_id):
         return
     hb = asyncio.create_task(_heartbeat_loop(pool, run_id, owner))
     work = asyncio.create_task(_execute(pool, redis, info["thread_id"], info["request_id"],
-                                       info["question"], info["project_id"]))
+                                       info["question"], info["project_id"], info["user_id"]))
     status, error, result = "done", None, None
     try:
         completed, _ = await asyncio.wait({hb, work}, return_when=asyncio.FIRST_COMPLETED)

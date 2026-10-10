@@ -147,3 +147,132 @@ CREATE INDEX IF NOT EXISTS idx_chunks_document ON chunks (document_id);
 -- 向量近似检索：HNSW 按余弦距离建索引，查询不再逐块算距离。
 -- 取舍：HNSW 先取近似近邻再按项目过滤，项目很多时返回数可能少于 LIMIT（面试可讲的"过滤式向量检索"问题）。
 CREATE INDEX IF NOT EXISTS idx_chunks_embedding_hnsw ON chunks USING hnsw (embedding vector_cosine_ops);
+
+-- ============================================================
+-- P0 增量摘要与多用户隔离：本轮改造的幂等迁移段。
+-- 沿用本文件既有风格：只用 IF NOT EXISTS / IF EXISTS，重复启动不报错。
+-- ============================================================
+
+-- 会话摘要：一个会话一行，随轮次增量推进。
+-- 为什么单独建表而不塞进 threads：摘要是可失败、可重算的派生数据，生命周期和会话本体不同；
+-- 单独一行才装得下自己的水位、失败计数与熔断状态，且整表不可用时上层能直接回退到原文截断
+-- —— 摘要是纯增强，不是链路依赖。
+CREATE TABLE IF NOT EXISTS thread_summaries (
+    thread_id            UUID PRIMARY KEY REFERENCES threads(id) ON DELETE CASCADE,
+    summary_text         TEXT NOT NULL DEFAULT '',
+    -- 水位：摘要已覆盖到哪条消息的 seq。下次只取它之后的增量，不重读全量历史。
+    covered_until_seq    BIGINT NOT NULL DEFAULT 0,
+    covered_turns        INTEGER NOT NULL DEFAULT 0,
+    -- 摘要自身花的 token 单列累计：摘要是为省 token 引入的，它自己的成本必须能单独看到，
+    -- 否则无法判断这个机制到底是赚还是亏。
+    summary_tokens       INTEGER NOT NULL DEFAULT 0,
+    -- 上次该摘要但失败了：旧摘要仍照常使用（stale 也比丢历史好），水位不前进，下次自然重试。
+    stale                BOOLEAN NOT NULL DEFAULT false,
+    -- 连续失败计数：连续多次失败即熔断，只走原文截断，不每轮再去撞一个必然失败的调用。
+    consecutive_failures INTEGER NOT NULL DEFAULT 0,
+    updated_at           TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- messages 需要一个单调序号做摘要水位：同一事务里多条消息的 created_at 可能完全相同，
+-- 按时间戳比较会漏轮或重复覆盖；只有单调序号能表达「覆盖到这条为止」这个确定边界。
+--
+-- 为什么用 DO 块显式回填，而不是直接 ADD COLUMN seq BIGSERIAL：
+-- BIGSERIAL 给存量行回填的是物理堆顺序，不保证与 created_at 一致（被 UPDATE 过的行会挪到堆尾）。
+-- 而水位语义一旦建立就不能再重排编号 —— 已经存下的 covered_until_seq 会整体错位，
+-- 所以必须在建列的同一时刻按 created_at 排好，且整段只在列不存在时执行（天然只跑一次，不会二次重排）。
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = current_schema()
+          AND table_name = 'messages' AND column_name = 'seq'
+    ) THEN
+        ALTER TABLE messages ADD COLUMN seq BIGINT;
+        -- 按 (created_at, id) 显式排序回填：id 兜住同一时间戳内的稳定次序，结果可复现。
+        WITH ordered AS (
+            SELECT id, row_number() OVER (ORDER BY created_at, id) AS rn FROM messages
+        )
+        UPDATE messages m SET seq = ordered.rn FROM ordered WHERE m.id = ordered.id;
+        -- 序列 OWNED BY 该列：随表删除一起回收，不留孤儿序列。
+        CREATE SEQUENCE IF NOT EXISTS messages_seq_seq AS BIGINT OWNED BY messages.seq;
+        -- 起点接在已回填的最大值之后；空表时 COALESCE 兜到 1，避免 setval(0) 越界报错。
+        PERFORM setval('messages_seq_seq', COALESCE((SELECT max(seq) FROM messages), 0) + 1, false);
+        ALTER TABLE messages ALTER COLUMN seq SET DEFAULT nextval('messages_seq_seq');
+        ALTER TABLE messages ALTER COLUMN seq SET NOT NULL;
+    END IF;
+END $$;
+
+-- 摘要增量取数是「按会话取水位之后的消息」，加复合索引避免随会话变长走全表扫。
+CREATE INDEX IF NOT EXISTS idx_messages_thread_seq ON messages (thread_id, seq);
+
+-- 归属锚点：只有 projects 挂 owner_id，threads/messages/documents/chunks 沿既有外键链传导。
+-- 为什么不每张表都加一列：多处冗余归属必然出现不一致（改一处忘一处），
+-- 单一锚点让越权校验只有一个判断点，漏不掉也对不上假。
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS owner_id TEXT;
+-- 存量项目统一归到遗留身份，再由「切换身份」入口认领回来；
+-- 迁移后浏览器里看到空列表是预期结果，不是数据丢了。
+-- 回填必须在加约束之前：这一行同时覆盖 P0 存量项目和「P0 已上线、P1 未上线」那段
+-- 中间态里新建的项目（它们的 owner_id 也是 NULL）。
+UPDATE projects SET owner_id = 'legacy-u1' WHERE owner_id IS NULL;
+-- P1 补约束。三步顺序不可颠倒：① 改写入代码（insert_project 现已必传 owner_id）
+-- → ② 回填残留 NULL（上一行）→ ③ 加约束（下一行）。颠倒必失败，已实测。
+-- 为什么不给列加 DEFAULT 'legacy-u1' 兜底：那会把「漏传 owner」从启动即失败
+-- 降级成静默把别人的数据写进遗留身份名下，归属写错比起步报错难查得多。
+ALTER TABLE projects ALTER COLUMN owner_id SET NOT NULL;
+
+-- 项目列表固定按 owner 过滤 + 按时间倒序，复合索引直接覆盖这个访问模式。
+CREATE INDEX IF NOT EXISTS idx_projects_owner ON projects (owner_id, created_at DESC);
+
+-- 会话级模型/推理强度覆盖：NULL 表示跟随 owner 默认配置，不是「关掉」。
+-- 为什么落库而不留在前端内存：真正调模型的是 worker 进程，和 api 不共享内存，
+-- 唯一可靠的共享真相是数据库（与上面 llm_config 的理由一致）。
+ALTER TABLE threads ADD COLUMN IF NOT EXISTS model TEXT;
+-- reasoning_effort：NULL / 'off' 表示不传该字段，走服务端默认，保证不选就维持改造前行为。
+ALTER TABLE threads ADD COLUMN IF NOT EXISTS reasoning_effort TEXT;
+
+-- llm_config 从「全局单行」改成「按 owner 一行」：每个人的 API Key 必须相互隔离，
+-- 共用一把 key 等于让任何新访客免费花掉库主的额度。
+ALTER TABLE llm_config DROP CONSTRAINT IF EXISTS llm_config_single_row;
+ALTER TABLE llm_config ADD COLUMN IF NOT EXISTS owner_id TEXT;
+-- 同上，回填先于约束：P0 中间态里 get_effective_config 播种的那行 owner_id 是 NULL，
+-- 不回填直接加约束必然失败（workbuddy 在真实库上已复现这一行）。
+UPDATE llm_config SET owner_id = 'legacy-u1' WHERE owner_id IS NULL;
+
+-- owner 唯一：一个身份最多一行配置，service 层的 upsert 直接挂在这个唯一键上。
+-- 顺序要求：必须先回填再建唯一索引。NULL 之间不互相冲突，但回填会把多行 NULL
+-- collapse 成同一个 legacy-u1 值；先建索引再回填只会把失败推迟到回填那步。
+CREATE UNIQUE INDEX IF NOT EXISTS idx_llm_config_owner ON llm_config (owner_id);
+-- P1 补约束：owner_id 是这张表现在真正的业务主键（id 只剩代理键作用），
+-- 允许 NULL 等于允许一行「谁都读不到、又占着唯一键」的僵尸配置。
+ALTER TABLE llm_config ALTER COLUMN owner_id SET NOT NULL;
+
+-- 单行表遗留：id 原本 DEFAULT 1（配合 CHECK (id = 1)）。去掉单行约束后，
+-- 第二个 owner 播种时还会拿到 id=1 撞主键，所以必须给它接上真正的序列。
+-- 建序列只做一次：CREATE 与挂 DEFAULT 都是结构变更，重复执行没有意义。
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE c.relkind = 'S' AND c.relname = 'llm_config_id_seq'
+          AND n.nspname = current_schema()
+    ) THEN
+        CREATE SEQUENCE llm_config_id_seq AS INT OWNED BY llm_config.id;
+        ALTER TABLE llm_config ALTER COLUMN id SET DEFAULT nextval('llm_config_id_seq');
+    END IF;
+END $$;
+
+-- 但「追上现有最大 id」必须每次启动都做，不能塞进上面的 IF 里。
+-- 已在真实库复现过的故障：序列在空表时建好（停在 1），随后旧代码用 DEFAULT 1 硬塞了
+-- 一行 id=1；下一个 owner 播种时 nextval 取到 1，撞 llm_config_pkey 报
+-- UniqueViolationError，表现是「新访客的模型配置永远存不进去」。
+-- 只用 GREATEST 单调前进，永不回拨：回拨会让已删除的 id 被重用。
+-- last_value 直接读会在序列从未取号时报错，故走 pg_sequence_last_value（未取号返回 NULL）。
+-- 不套 DO 块：setval 本身就是幂等的，没有需要存在性守卫的裸 DDL。
+SELECT setval(
+    'llm_config_id_seq',
+    GREATEST(
+        COALESCE((SELECT max(id) FROM llm_config), 1),
+        COALESCE(pg_sequence_last_value('llm_config_id_seq'::regclass), 1)
+    )
+);
+

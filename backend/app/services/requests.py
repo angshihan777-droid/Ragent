@@ -1,24 +1,29 @@
-"""请求入队：固定知识库执行身份，同会话 FIFO。"""
+"""请求入队：知识库 Agent 固定，执行身份取当前 owner，同会话 FIFO。"""
 import logging
 import asyncpg
 import redis.asyncio as aioredis
 
-from app.config import FIXED_USER_ID, KNOWLEDGE_AGENT_ID
+from app.config import KNOWLEDGE_AGENT_ID
 from app.queue import enqueue_run
 from app.repositories import messages, requests, threads
 from app.services.scheduler import try_dispatch_group
 
 
 async def create_request(
-    pool: asyncpg.Pool, redis: aioredis.Redis, thread_id: str, content: str
+    pool: asyncpg.Pool, redis: aioredis.Redis, owner_id: str, thread_id: str, content: str
 ) -> dict | None:
     """落一次提问并尝试派发：同事务写消息+写请求+决策，commit 后再投递。
 
-    校验会话存在，使用固定知识库执行身份保持同会话串行。
+    校验会话存在，以当前身份作为执行身份保持同会话串行。
     会话不存在返回 None，由路由收成 404。
 
     时序关键：enqueue 必须在事务 commit 之后。若先投递再 commit，
     worker 可能先取到消息，却在库里查不到刚建的 run。
+
+    为什么 user_id 必须是真实 owner 而不是原来的固定值 'u1'：FIFO 分组键是
+    (user_id, agent_id, thread_id)，固定值会把所有人的请求塞进同一维度。
+    分组键里已经有 thread_id、不同用户的会话本就不同组，所以这不会造成串号，
+    但 user_id 落成真值后这一列才有排查价值（能直接看出某次执行是谁发起的）。
     """
     async with pool.acquire() as conn:
         thread = await threads.get_thread(conn, thread_id)
@@ -30,11 +35,11 @@ async def create_request(
             msg = await messages.insert_message(conn, thread_id, "user", content)
             # 请求绑定刚落库的这条 user 消息，worker 据此取本次要回答的问题
             req = await requests.insert_request(
-                conn, FIXED_USER_ID, agent_id, thread_id, msg["id"]
+                conn, owner_id, agent_id, thread_id, msg["id"]
             )
             # 同组空闲则放行队头，拿到待投递的 run_id（可能是本请求，也可能不是）
             run_id = await try_dispatch_group(
-                conn, FIXED_USER_ID, agent_id, thread_id
+                conn, owner_id, agent_id, thread_id
             )
     # 事务已提交，run 一定已在库里，此时投递才安全
     if run_id is not None:

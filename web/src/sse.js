@@ -2,8 +2,13 @@
 // 决策：用 fetch + ReadableStream 而非 EventSource。
 // 面试理由：EventSource 只能 GET 且流结束后会自动重连、重复触发；
 // 我们的链路是「先 POST 拿 id 再 GET stream」，用 reader 能读完 done 就主动收手，不重连。
+//
+// credentials: "include" 是身份隔离的必要条件：身份存在 httpOnly Cookie 里，
+// 跨源（dev 下 5173 → 8000）的 fetch 默认不带 Cookie，漏了这一项的表现是
+// 「提问成功但流里是另一个身份的上下文」或直接 404，而不是显式报错。
+// 注意不是 withCredentials——那是 XHR/EventSource 的写法，对 fetch 无效。
 export async function readStream(url, onToken, onSources, onStep, signal) {
-  const res = await fetch(url, { signal });
+  const res = await fetch(url, { signal, credentials: "include" });
   if (!res.ok) throw new Error("SSE 连接失败: " + res.status);
   const reader = res.body.getReader();
   const decoder = new TextDecoder();

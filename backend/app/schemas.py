@@ -137,3 +137,23 @@ class UpdateDocumentIn(BaseModel):
         if not value.strip():
             raise ValueError("标题和正文不能为空")
         return value
+
+
+# ---- 身份（§3.7 身份可迁移）----
+
+class IdentityOut(BaseModel):
+    """当前身份返回体：只回 id 本身。
+
+    刻意不回任何派生信息（比如项目数、创建时间）：这个 id 等同于密码，
+    接口越简单，越不容易在日志/埋点里被顺手带出去。
+    """
+    owner_id: str
+
+
+class SwitchIdentityIn(BaseModel):
+    """切换身份入参：粘贴一个已有 id，后端覆写 Cookie。
+
+    合法性只在服务端用 normalize_owner_id 判定（白名单字符 + 长度），
+    这里不加正则校验，避免两处规则各写一份、日后改一处漏一处。
+    """
+    owner_id: str = Field(min_length=1, max_length=64)

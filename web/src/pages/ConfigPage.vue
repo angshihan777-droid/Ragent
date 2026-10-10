@@ -22,9 +22,62 @@ function flash(type, text) {
   msg.value = text;
 }
 
+// ---- 身份（§3.7 身份可迁移）----
+const ownerId = ref("");
+const targetId = ref(""); // 要切换到的 id，用户从另一台机器复制过来
+const switching = ref(false);
+const copied = ref(false);
+const idMsg = ref("");
+const idMsgType = ref("");
+
+async function copyOwnerId() {
+  // navigator.clipboard 在非 https 且非 localhost 下不可用，失败就提示用户手动选中，
+  // 不引任何复制库——为一个按钮加依赖不划算
+  try {
+    await navigator.clipboard.writeText(ownerId.value);
+    copied.value = true;
+    setTimeout(() => (copied.value = false), 1600);
+  } catch (_) {
+    idMsgType.value = "err";
+    idMsg.value = "当前环境不允许自动复制，请手动选中上面的 id 复制。";
+  }
+}
+
+async function doSwitchIdentity() {
+  const next = targetId.value.trim();
+  if (!next || switching.value || next === ownerId.value) return;
+  switching.value = true;
+  idMsg.value = "";
+  try {
+    await store.switchIdentity(next);
+    ownerId.value = store.ownerId;
+    targetId.value = "";
+    // 配置也跟着身份变了，重新回显一遍，否则页面上还是上一个身份的地址和模型
+    const cfg = await api.getLLMConfig();
+    baseUrl.value = cfg.base_url;
+    model.value = cfg.model;
+    keySet.value = cfg.key_set;
+    models.value = cfg.model ? [cfg.model] : [];
+    idMsgType.value = "ok";
+    idMsg.value = "已切换到 " + store.ownerId + "，数据已重新加载。";
+  } catch (e) {
+    idMsgType.value = "err";
+    idMsg.value = "切换失败: " + e.message;
+  } finally {
+    switching.value = false;
+  }
+}
+
 onMounted(async () => {
   loading.value = true;
   try {
+    // 身份读失败不该拖垮整页配置回显，单独 try
+    try {
+      await store.loadIdentity();
+      ownerId.value = store.ownerId;
+    } catch (_) {
+      ownerId.value = "";
+    }
     const cfg = await api.getLLMConfig();
     baseUrl.value = cfg.base_url;
     model.value = cfg.model;
@@ -132,6 +185,48 @@ async function save() {
         </button>
       </footer>
     </div>
+
+    <!-- 身份区放在页面最下方：它是「换机器时才用一次」的功能，不该和日常配置抢注意力 -->
+    <div class="card identity">
+      <div class="field">
+        <label>当前身份 id</label>
+        <div class="id-row">
+          <code class="id-value">{{ ownerId || "读取中…" }}</code>
+          <button class="quiet" :disabled="!ownerId" @click="copyOwnerId">
+            <Icon :name="copied ? 'check' : 'files'" :size="14" />{{ copied ? "已复制" : "复制" }}
+          </button>
+        </div>
+        <small>
+          <span class="badge badge-danger"><Icon name="alert" :size="12" />等同于密码</span>
+          你的项目、资料和对话都绑定在这个 id 上。任何人拿到它就能访问你的全部数据，不要外发。
+        </small>
+      </div>
+
+      <div class="field">
+        <label for="cfg-identity">切换身份</label>
+        <div class="id-row">
+          <input
+            id="cfg-identity"
+            v-model="targetId"
+            placeholder="粘贴另一台机器上的身份 id"
+            :disabled="switching"
+            @keyup.enter="doSwitchIdentity"
+          />
+          <button
+            class="btn-brand"
+            :disabled="switching || !targetId.trim() || targetId.trim() === ownerId"
+            @click="doSwitchIdentity"
+          >
+            {{ switching ? "切换中…" : "切换" }}
+          </button>
+        </div>
+        <small>换浏览器或换机器时，把上面的 id 粘到这里即可接回原有数据；也用于认领迁移前的存量项目。</small>
+      </div>
+
+      <div v-if="idMsg" :class="idMsgType === 'ok' ? 'notice' : 'error-box'" role="status">
+        <Icon :name="idMsgType === 'ok' ? 'check' : 'alert'" :size="15" />{{ idMsg }}
+      </div>
+    </div>
   </div>
 </template>
 
@@ -147,6 +242,12 @@ async function save() {
 label { display: block; margin: 0 0 var(--s-2); font-size: var(--fs-sm); font-weight: 500; color: var(--text); }
 small { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-2); color: var(--faint); font-size: var(--fs-xs); line-height: 1.6; }
 .notice, .error-box { margin-top: var(--s-5); }
+.identity { margin-top: var(--s-5); }
+.id-row { display: flex; align-items: center; gap: var(--s-2); }
+.id-row input { flex: 1; min-width: 0; }
+.id-row button { flex: none; white-space: nowrap; }
+/* 身份 id 是随机 uuid，窄屏下必须允许换行，否则会把卡片撑出横向滚动条 */
+.id-value { flex: 1; min-width: 0; padding: var(--s-2) var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-2); font-size: var(--fs-xs); word-break: break-all; user-select: all; }
 .actions { display: flex; justify-content: flex-end; margin-top: var(--s-5); padding-top: var(--s-5); border-top: 1px solid var(--border-soft); }
 @media (max-width: 600px) { .config { padding: var(--s-5) var(--s-4); } }
 </style>
