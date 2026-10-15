@@ -55,9 +55,16 @@ def test_after_check_does_not_retry_on_retrieval_error():
 
 # ---- _context：打标签 + 截断 + 拼接 ----
 
+class _Conn:
+    """只实现 _context 用到的那个查询：本项目的资料篇数。"""
+
+    async def fetchval(self, query, *args):
+        return 3
+
+
 class _Acquire:
     async def __aenter__(self):
-        return None
+        return _Conn()
 
     async def __aexit__(self, *exc):
         return False
@@ -68,12 +75,17 @@ class _Pool:
         return _Acquire()
 
 
-def _run_context(monkeypatch, history):
+def _run_context_state(monkeypatch, history):
     async def fake_history(conn, thread_id, request_id):
         return history
     monkeypatch.setattr(graph, "history_before_request", fake_history)
-    config = {"configurable": {"pool": _Pool(), "thread_id": "t", "request_id": "r"}}
-    return asyncio.run(graph._context({"question": "Q"}, config))["messages"]
+    config = {"configurable": {"pool": _Pool(), "thread_id": "t", "request_id": "r",
+                               "project_id": "p"}}
+    return asyncio.run(graph._context({"question": "Q"}, config))
+
+
+def _run_context(monkeypatch, history):
+    return _run_context_state(monkeypatch, history)["messages"]
 
 
 def _row(role, n):
@@ -96,3 +108,8 @@ def test_context_drops_leading_orphan_ai_reply(monkeypatch):
 def test_context_without_history_has_only_question(monkeypatch):
     msgs = _run_context(monkeypatch, [])
     assert len(msgs) == 1 and msgs[0].content == "Q"
+
+
+def test_context_carries_material_count_for_decide(monkeypatch):
+    """决策节点靠这个数把「该不该查资料」变成客观判据，而不是让模型猜。"""
+    assert _run_context_state(monkeypatch, [])["material_count"] == 3

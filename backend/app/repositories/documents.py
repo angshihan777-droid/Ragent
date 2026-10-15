@@ -76,6 +76,17 @@ async def delete_document(conn: asyncpg.Connection, document_id) -> bool:
     return await conn.fetchval("DELETE FROM documents WHERE id = $1 RETURNING id", document_id) is not None
 
 
+async def count_documents(conn: asyncpg.Connection, project_id) -> int:
+    """数某个项目下有几篇资料。
+
+    决策节点拿它把「本项目有没有资料」变成一个客观事实：有资料就默认该走检索，
+    而不是让模型凭「这个问题看起来像不像常识」去猜；完全没资料时则不必白跑一次检索。
+    """
+    return await conn.fetchval(
+        "SELECT count(*) FROM documents WHERE project_id = $1", project_id
+    )
+
+
 async def search_chunks_with_doc(
     conn: asyncpg.Connection, project_id, query_embedding: list[float], top_k: int
 ) -> list[asyncpg.Record]:
