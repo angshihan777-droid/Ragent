@@ -301,3 +301,9 @@ CREATE TABLE IF NOT EXISTS api_tokens (
 -- 「某个身份有哪些令牌」是运维最常见的查询，按 owner + 时间倒序直接覆盖它。
 CREATE INDEX IF NOT EXISTS idx_api_tokens_owner ON api_tokens (owner_id, created_at DESC);
 
+-- 推理强度：DeepSeek V4 这类推理模型服务端默认档是 high，一次简单问答也要几十秒。
+-- 存成「每个身份可覆盖」的一列，NULL 表示跟随环境变量 LLM_REASONING_EFFORT 的默认值。
+-- 不复用 threads.reasoning_effort：那个列是会话级的、至今没有任何读写方，
+-- 而「用哪个档位的模型」和 base_url/model/api_key 一样属于模型接入配置，放在同一行才自洽。
+ALTER TABLE llm_config ADD COLUMN IF NOT EXISTS reasoning_effort TEXT;
+

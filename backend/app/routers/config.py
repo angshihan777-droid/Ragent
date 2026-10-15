@@ -45,7 +45,9 @@ async def save_llm_config(
     pool: asyncpg.Pool = Depends(get_pool),
 ):
     """保存配置；空密钥保留原值，保存后回读一遍作为确认。"""
-    await svc.save_config(pool, owner_id, body.base_url, body.model, body.api_key)
+    await svc.save_config(
+        pool, owner_id, body.base_url, body.model, body.api_key, body.reasoning_effort
+    )
     view = await svc.get_config_view(pool, owner_id)
     return LLMConfigView(**view)
 

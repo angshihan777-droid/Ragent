@@ -6,12 +6,14 @@ import re
 from typing import Literal, TypedDict
 
 from langchain_core.messages import HumanMessage, SystemMessage, convert_to_messages, trim_messages
+import httpx
 from langchain_core.runnables import RunnableConfig
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
 from pydantic import BaseModel, Field
 
 from app.agent.structured import invoke_json
+from app.config import get_settings
 from app.repositories.messages import history_before_request
 from app.services import llm_config, rag
 
@@ -63,10 +65,23 @@ async def _build_llm(pool, owner_id: str):
     cfg = await llm_config.get_effective_config(pool, owner_id)
     if not all(str(cfg.get(key) or "").strip() for key in ("base_url", "api_key", "model")):
         raise ValueError("请先在模型配置中填写服务地址、模型名称和 API Key")
-    return ChatOpenAI(base_url=cfg["base_url"], api_key=cfg["api_key"],
-                      model=cfg["model"], temperature=0, timeout=60, max_retries=1,
-                      # 流式时也让服务商在最后一个分片返回 token 用量，用于成本统计
-                      stream_usage=True)
+    # DeepSeek 等服务在繁忙时会先发空行保活再返回实际内容，需要足够的读超时
+    settings = get_settings()
+    timeout_sec = settings.llm_request_timeout
+    http_client = httpx.AsyncClient(
+        timeout=httpx.Timeout(connect=10.0, read=float(timeout_sec), write=30.0, pool=10.0)
+    )
+    # 推理强度：空串表示「不传这个字段」，回到服务端默认；有值才显式下发。
+    # 不传与传默认值在语义上不同：前者把档位交给服务商，后者把它钉死。
+    effort = (cfg.get("reasoning_effort") or "").strip()
+    effort_kwargs = {"reasoning_effort": effort} if effort else {}
+    return ChatOpenAI(
+        base_url=cfg["base_url"], api_key=cfg["api_key"],
+        model=cfg["model"], temperature=0,
+        timeout=timeout_sec, max_retries=1,
+        http_async_client=http_client,
+        stream_usage=True,
+        **effort_kwargs)
 
 
 async def _context(state, config):

@@ -10,6 +10,13 @@ const apiKey = ref(""); // 空=不改密钥；库里已存时占位提示「已�
 const keySet = ref(false);
 const model = ref("");
 const models = ref([]); // 拉取到的可选模型 id 列表
+// 推理强度：留空表示不改。推理模型默认 high 档「想很久」，简单问答也会拖到几十秒。
+const effort = ref("low");
+const EFFORT_OPTIONS = [
+  { value: "low", label: "low（快，推荐日常提问）" },
+  { value: "high", label: "high（慢，复杂推理）" },
+  { value: "max", label: "max（最慢）" },
+];
 
 const loading = ref(false);
 const fetching = ref(false);
@@ -57,6 +64,7 @@ async function doSwitchIdentity() {
     baseUrl.value = cfg.base_url;
     model.value = cfg.model;
     keySet.value = cfg.key_set;
+    effort.value = cfg.reasoning_effort || "low";
     models.value = cfg.model ? [cfg.model] : [];
     idMsgType.value = "ok";
     idMsg.value = "已切换到 " + store.ownerId + "，数据已重新加载。";
@@ -82,6 +90,7 @@ onMounted(async () => {
     baseUrl.value = cfg.base_url;
     model.value = cfg.model;
     keySet.value = cfg.key_set;
+    effort.value = cfg.reasoning_effort || "low";
     // 当前已保存的模型先放进下拉，未拉取列表时也能看到并保存
     if (cfg.model) models.value = [cfg.model];
   } catch (e) {
@@ -118,7 +127,9 @@ async function save() {
   saving.value = true;
   msg.value = "";
   try {
-    const view = await api.saveLLMConfig(baseUrl.value.trim(), model.value, apiKey.value);
+    const view = await api.saveLLMConfig(
+      baseUrl.value.trim(), model.value, apiKey.value, effort.value
+    );
     keySet.value = view.key_set;
     store.llm = view;
     store.models = [...new Set([view.model, ...store.models])];
@@ -173,6 +184,14 @@ async function save() {
           <option v-for="m in models" :key="m" :value="m">{{ m }}</option>
         </select>
         <small>{{ models.length ? `共 ${models.length} 个可选模型。` : "填好地址后点击“拉取模型”获取列表。" }}</small>
+      </div>
+
+      <div class="field">
+        <label for="cfg-effort">推理强度</label>
+        <select id="cfg-effort" v-model="effort" :disabled="loading">
+          <option v-for="o in EFFORT_OPTIONS" :key="o.value" :value="o.value">{{ o.label }}</option>
+        </select>
+        <small>推理模型（如 DeepSeek V4）默认按 high 档思考，一句问候也要几十秒；改成 low 可把单次调用从 ~40 秒压到 ~1 秒。一次问答要调 2~3 次模型，差别会成倍放大。</small>
       </div>
 
       <div v-if="msg" :class="msgType === 'ok' ? 'notice' : 'error-box'" role="status">

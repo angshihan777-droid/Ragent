@@ -103,6 +103,11 @@ function send() {
 function stop() {
   if (!sending.value) return;
   streamController?.abort();
+  // abort 会让 readStream 抛 AbortError，catch/finally 里本来也会收尾；
+  // 但那是异步的下一拍，按钮要立刻变成可发送状态，所以这里先置一次。
+  // 注意：这只中断「前端读取」，服务端那次 run 仍会跑完并落库（库才是结果的权威来源），
+  // 刷新或切回会话时会看到它已经完成的回答。
+  sending.value = false;
 }
 
 // run_id 标识每次节点执行，补检索不会覆盖第一轮步骤。

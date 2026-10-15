@@ -75,8 +75,14 @@ export const api = {
 
   // ---- LLM 配置 ----
   getLLMConfig: () => get("/config/llm"),
-  saveLLMConfig: (base_url, model, api_key) =>
-    send("PUT", "/config/llm", { base_url, model, api_key: api_key || null }),
+  saveLLMConfig: (base_url, model, api_key, reasoning_effort) =>
+    send("PUT", "/config/llm", {
+      base_url,
+      model,
+      // 空值一律表示「不改这一项」，后端保留库里原值——密钥和推理强度共用同一套口径
+      api_key: api_key || null,
+      reasoning_effort: reasoning_effort || null,
+    }),
   listModels: (base_url, api_key) =>
     send("POST", "/config/llm/models", { base_url, api_key: api_key || null }),
 

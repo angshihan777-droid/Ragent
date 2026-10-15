@@ -100,13 +100,16 @@ class LLMConfigView(BaseModel):
     base_url: str
     model: str
     key_set: bool
+    # 推理强度（low/high/max）；空串表示不传该字段、由服务端定档
+    reasoning_effort: str = ""
 
 
 class SaveLLMConfigIn(BaseModel):
-    """保存 LLM 配置：api_key 为空表示「不改密钥」，保留库里原值。"""
+    """保存 LLM 配置：api_key 为空表示「不改密钥」，reasoning_effort 为空表示「不改档位」。"""
     base_url: str
     model: str
     api_key: str | None = None
+    reasoning_effort: str | None = None
 
 
 class ListModelsIn(BaseModel):

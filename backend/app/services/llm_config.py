@@ -27,9 +27,22 @@ async def get_effective_config(pool: asyncpg.Pool, owner_id: str) -> dict:
         if row is None:
             # 这个身份第一次用，用 .env 里的值给他播一行种子，之后都以库为准
             s = get_settings()
-            await repo.upsert_config(conn, owner_id, s.llm_base_url, s.llm_api_key, s.llm_model)
-            return {"base_url": s.llm_base_url, "api_key": s.llm_api_key, "model": s.llm_model}
-    return {"base_url": row["base_url"], "api_key": row["api_key"], "model": row["model"]}
+            await repo.upsert_config(
+                conn, owner_id, s.llm_base_url, s.llm_api_key, s.llm_model, s.llm_reasoning_effort
+            )
+            return {
+                "base_url": s.llm_base_url,
+                "api_key": s.llm_api_key,
+                "model": s.llm_model,
+                "reasoning_effort": s.llm_reasoning_effort,
+            }
+    return {
+        "base_url": row["base_url"],
+        "api_key": row["api_key"],
+        "model": row["model"],
+        # 库里没存过（NULL）时回落到环境变量默认，而不是当成「不许推理」。
+        "reasoning_effort": row["reasoning_effort"] or get_settings().llm_reasoning_effort,
+    }
 
 
 async def get_config_view(pool: asyncpg.Pool, owner_id: str) -> dict:
@@ -39,17 +52,30 @@ async def get_config_view(pool: asyncpg.Pool, owner_id: str) -> dict:
         "base_url": cfg["base_url"],
         "model": cfg["model"],
         "key_set": bool(cfg["api_key"]),
+        "reasoning_effort": cfg["reasoning_effort"],
     }
 
 async def save_config(
-    pool: asyncpg.Pool, owner_id: str, base_url: str, model: str, api_key: str | None
+    pool: asyncpg.Pool,
+    owner_id: str,
+    base_url: str,
+    model: str,
+    api_key: str | None,
+    reasoning_effort: str | None = None,
 ) -> None:
-    """保存配置：api_key 为空表示「不改密钥」，保留库里原值，避免前端不回显时被清空。"""
+    """保存配置：字段为 None/空表示「不改这一项」，保留库里原值。
+
+    为什么密钥和推理强度都用「空=不改」而不是「空=清空」：前端不回显密钥，
+    也不一定每次都带上所有字段，按「空即清空」处理会把用户没碰过的配置抹掉。
+    """
     async with pool.acquire() as conn:
         if not api_key:
             current = await get_effective_config(pool, owner_id)
             api_key = current["api_key"]
-        await repo.upsert_config(conn, owner_id, base_url, api_key, model)
+        if not reasoning_effort:
+            current = await get_effective_config(pool, owner_id)
+            reasoning_effort = current["reasoning_effort"]
+        await repo.upsert_config(conn, owner_id, base_url, api_key, model, reasoning_effort)
 
 
 async def list_models(base_url: str, api_key: str) -> list[str]:
