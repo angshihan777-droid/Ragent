@@ -27,7 +27,7 @@ onMounted(async () => {
         <RouterLink v-if="route.path !== '/chat'" class="back-link" to="/chat"><Icon name="arrow-left" :size="15" /> 返回对话</RouterLink>
       </div>
       <p v-if="loadError" class="load-error" role="alert">加载失败：{{ loadError }}。请检查后端连接后刷新。</p>
-      <div class="route-content"><RouterView /></div>
+      <div class="route-content"><RouterView v-slot="{ Component }"><keep-alive><component :is="Component" /></keep-alive></RouterView></div>
     </main>
   </div>
 </template>

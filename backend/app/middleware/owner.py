@@ -20,6 +20,7 @@ from starlette.datastructures import Headers
 from starlette.responses import Response
 
 from app.config import OWNER_COOKIE_MAX_AGE, OWNER_COOKIE_NAME
+from app.security import parse_bearer
 
 # Cookie 值是不可信输入，先按白名单收窄再用。放行 uuid4 与 legacy-u1 这类连字符形式。
 # 为什么要校验：这个值会进日志、会被原样写回 Set-Cookie 头，
@@ -97,14 +98,22 @@ class OwnerCookieMiddleware:
         headers = Headers(scope=scope)
         raw_cookie = headers.get("cookie", "")
         owner_id = normalize_owner_id(_read_cookie(raw_cookie, OWNER_COOKIE_NAME))
-        issued = owner_id is None
+        # 带 Bearer 令牌的服务间调用不在这里发身份：令牌身份由 deps.get_owner_id 解析。
+        # 中间件再放一个随机身份进去，会让「这次请求是谁」出现两个互相矛盾的答案；
+        # 而给一个从不用 Cookie 的服务调用方回 Set-Cookie 也是纯粹的噪音。
+        # 只认真正解析成功的 Bearer —— 别的 scheme（Basic 等）不改变浏览器侧原有行为。
+        service_call = parse_bearer(headers.get("authorization")) is not None
+        issued = owner_id is None and not service_call
         if issued:
             owner_id = str(uuid.uuid4())
 
         # 放进 scope["state"] 供依赖读取（即 request.state）：deps 只读 state，
         # 不重复解析 Cookie，保证同一请求内「新发的身份」与「写回浏览器的身份」是同一个值。
+        # 服务间调用且没带 Cookie 时刻意留空：deps 读不到会当场抛错，
+        # 而不是拿一个随机身份继续跑（那会把数据写进一个谁都找不到的身份名下）。
         state = scope.setdefault("state", {})
-        state["owner_id"] = owner_id
+        if owner_id is not None:
+            state["owner_id"] = owner_id
         secure = is_secure_scheme(scope.get("scheme", "http"), headers.get("x-forwarded-proto"))
 
         async def send_wrapper(message):

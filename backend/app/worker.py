@@ -116,7 +116,7 @@ async def _handle_run(pool, redis, run_id):
             if usage:
                 log.info("Run usage request=%s %s", info["request_id"], usage)
         except Exception as exc:
-            log.error("Execution failed request=%s exception=%s", info["request_id"], type(exc).__name__)
+            log.exception("Execution failed request=%s", info["request_id"])
             status, error = "failed", public_error(exc)
         # Keep renewing until commit, including any wait for a DB connection.
         committed, next_id = await finalize_run(pool, info, owner, status, error, result, usage)

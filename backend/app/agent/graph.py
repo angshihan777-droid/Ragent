@@ -6,12 +6,15 @@ import re
 from typing import Literal, TypedDict
 
 from langchain_core.messages import HumanMessage, SystemMessage, convert_to_messages, trim_messages
+import httpx
 from langchain_core.runnables import RunnableConfig
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
 from pydantic import BaseModel, Field
 
 from app.agent.structured import invoke_json
+from app.config import get_settings
+from app.repositories import documents
 from app.repositories.messages import history_before_request
 from app.services import llm_config, rag
 
@@ -40,6 +43,7 @@ class Evidence(BaseModel):
 class AgentState(TypedDict, total=False):
     question: str
     messages: list
+    material_count: int
     action: str
     query: str
     clarification: str
@@ -63,16 +67,31 @@ async def _build_llm(pool, owner_id: str):
     cfg = await llm_config.get_effective_config(pool, owner_id)
     if not all(str(cfg.get(key) or "").strip() for key in ("base_url", "api_key", "model")):
         raise ValueError("请先在模型配置中填写服务地址、模型名称和 API Key")
-    return ChatOpenAI(base_url=cfg["base_url"], api_key=cfg["api_key"],
-                      model=cfg["model"], temperature=0, timeout=60, max_retries=1,
-                      # 流式时也让服务商在最后一个分片返回 token 用量，用于成本统计
-                      stream_usage=True)
+    # DeepSeek 等服务在繁忙时会先发空行保活再返回实际内容，需要足够的读超时
+    settings = get_settings()
+    timeout_sec = settings.llm_request_timeout
+    http_client = httpx.AsyncClient(
+        timeout=httpx.Timeout(connect=10.0, read=float(timeout_sec), write=30.0, pool=10.0)
+    )
+    # 推理强度：空串表示「不传这个字段」，回到服务端默认；有值才显式下发。
+    # 不传与传默认值在语义上不同：前者把档位交给服务商，后者把它钉死。
+    effort = (cfg.get("reasoning_effort") or "").strip()
+    effort_kwargs = {"reasoning_effort": effort} if effort else {}
+    return ChatOpenAI(
+        base_url=cfg["base_url"], api_key=cfg["api_key"],
+        model=cfg["model"], temperature=0,
+        timeout=timeout_sec, max_retries=1,
+        http_async_client=http_client,
+        stream_usage=True,
+        **effort_kwargs)
 
 
 async def _context(state, config):
     cfg = config["configurable"]
     async with cfg["pool"].acquire() as conn:
         history = await history_before_request(conn, cfg["thread_id"], cfg["request_id"])
+        # 决策节点要用：本项目的资料数量是客观事实，不能靠模型猜。
+        material_count = await documents.count_documents(conn, cfg["project_id"])
     # 1. 打标签：数据库的 role 字符串 → LangChain 消息对象（user→Human，assistant→AI）
     past = convert_to_messages([{"role": r["role"], "content": r["content"]} for r in history])
     # 2. 截断：从最新往回保留，总字符数不超过 12000；开头不能是孤立的 AI 回复
@@ -85,7 +104,27 @@ async def _context(state, config):
     )
     # 3. 拼接：本次问题放在最后，不参与截断
     messages.append(HumanMessage(content=state["question"]))
-    return {"messages": messages, "sources": [], "queries": [], "rounds": 0}
+    return {"messages": messages, "sources": [], "queries": [], "rounds": 0,
+            "material_count": material_count}
+
+
+def _scope_rule(material_count: int) -> str:
+    """决策提示词里「该不该查资料」那一段。
+
+    为什么单独抽成纯函数：这段文字的措辞直接决定「资料里明明写着、却凭模型常识直接答」
+    会不会复现，它是行为契约而不是普通文案，所以让它可被单测钉住。
+
+    核心是把判据从「问题像不像常识」换成「资料库里有没有东西」：旧措辞把「一般解释」
+    划进 direct，于是「git 是什么」这类问题会直接跳过检索 —— 哪怕资料库里正躺着一篇
+    git 笔记。用户上传资料要的是「按我的资料回答」。
+    """
+    if material_count:
+        return (
+            f"本项目已上传 {material_count} 篇资料。凡问题涉及某个主题、概念、命令、数值或做法，"
+            "一律选 retrieve —— 即使它看起来像常识题或一般解释，用户要的是基于他自己资料的回答。"
+            "只有三类可以 direct：① 问候与寒暄；② 对用户本次粘贴文本的改写润色；③ 关于助手自身的元问题。"
+        )
+    return "本项目暂无资料，只能选 direct 或 clarify，不要选 retrieve。"
 
 
 async def _decide(state, config):
@@ -93,8 +132,8 @@ async def _decide(state, config):
     decision = await invoke_json(model, Decision, config=config, messages=[
         SystemMessage(content=(
             "你是唯一的项目知识库助手。判断这次请求需要 direct、clarify 还是 retrieve。"
-            "问候、一般解释、对已提供文本的改写可直接回答；涉及项目文档、制度、人物、"
-            "数值或资料中的事实必须检索。历史回复不是文档证据。结合历史把追问改成独立查询。"
+            + _scope_rule(state.get("material_count", 0)) +
+            "历史回复不是文档证据。结合历史把追问改成独立查询。"
             "仅当无法确定用户意图时澄清，不要因资料可能不存在而提前澄清。"
             "query 为简洁完整检索问题，clarification 为面向用户的简短澄清问题。"
         )), *state["messages"]])

@@ -14,31 +14,40 @@ async def get_config(conn: asyncpg.Connection, owner_id: str) -> asyncpg.Record 
     共用一把 key 等于让任何访客花掉配置者的额度。
     """
     return await conn.fetchrow(
-        "SELECT base_url, api_key, model FROM llm_config WHERE owner_id = $1",
+        "SELECT base_url, api_key, model, reasoning_effort FROM llm_config WHERE owner_id = $1",
         owner_id,
     )
 
 
 async def upsert_config(
-    conn: asyncpg.Connection, owner_id: str, base_url: str, api_key: str, model: str
+    conn: asyncpg.Connection,
+    owner_id: str,
+    base_url: str,
+    api_key: str,
+    model: str,
+    reasoning_effort: str | None,
 ) -> None:
     """写入/更新某身份的配置行：冲突键是 owner_id，冲突则覆盖并刷新时间。
 
     不写 id：它由 llm_config_id_seq 的 DEFAULT nextval 取号（P0 迁移里建的序列）。
     如果这里还沿用旧写法硬塞 VALUES (1, ...)，第二个身份播种时会直接撞主键。
+
+    reasoning_effort 允许为 NULL：语义是「跟随环境变量默认」，不是「关掉推理」。
     """
     await conn.execute(
         """
-        INSERT INTO llm_config (owner_id, base_url, api_key, model, updated_at)
-        VALUES ($1, $2, $3, $4, now())
+        INSERT INTO llm_config (owner_id, base_url, api_key, model, reasoning_effort, updated_at)
+        VALUES ($1, $2, $3, $4, $5, now())
         ON CONFLICT (owner_id) DO UPDATE
         SET base_url = EXCLUDED.base_url,
             api_key = EXCLUDED.api_key,
             model = EXCLUDED.model,
+            reasoning_effort = EXCLUDED.reasoning_effort,
             updated_at = now()
         """,
         owner_id,
         base_url,
         api_key,
         model,
+        reasoning_effort,
     )

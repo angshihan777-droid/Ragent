@@ -57,6 +57,14 @@ class Settings(BaseSettings):
     llm_base_url: str = ""
     llm_api_key: str = ""
     llm_model: str = ""
+    # 请求超时（秒）。OpenAI 兼容服务在繁忙时会持续发空行保活，读超时必须放宽到覆盖
+    # 排队时间，否则真正的响应还没到就先超时了。DeepSeek 实测排队可超过 2 分钟。
+    llm_request_timeout: int = 180
+    # 推理强度（low / high / max）。留空表示不传这个字段，交给服务端默认。
+    # 为什么默认 low：DeepSeek V4 系列是推理模型，服务端默认 high —— 实测同一句「你好」
+    # 默认档要 41 秒，low 档 0.7 秒；一次问答要调 2~3 次模型，默认档累积就是分钟级等待。
+    # 换成别的服务商时把它设为空串即可回到「不传该字段」的行为。
+    llm_reasoning_effort: str = "low"
 
     # RAG embedding：走本地 fastembed(ONNX)，不依赖外部 API。
     # 只暴露模型名一个配置项，本地模型无需 base_url/key。
