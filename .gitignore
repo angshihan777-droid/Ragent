@@ -4,6 +4,9 @@ __pycache__/
 node_modules/
 dist/
 
+# 本地验证用的虚拟环境，不入库
+.venv/
+
 # 前端本地 dev 日志，不入库
 web/dev.out.log
 web/dev.err.log

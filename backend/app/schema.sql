@@ -276,3 +276,28 @@ SELECT setval(
     )
 );
 
+-- ============================================================
+-- P2 服务间鉴权：访问令牌表。
+-- 背景：原设计只有「Cookie 身份」，那是给浏览器用的隔离，不是鉴权 ——
+-- 服务调用方（外部 Agent 平台、脚本、CI）不该借浏览器身份，需要一枚可签发、可撤销的凭证。
+-- 沿用本文件既有风格：只用 IF NOT EXISTS / IF EXISTS，重复启动不报错。
+-- ============================================================
+
+-- 只存令牌的 sha256，不存明文：库里放明文等于把全部身份写成一张可读的表，
+-- 一次备份泄露就等于数据全丢。为什么不上 bcrypt：令牌是 32 字节随机串，
+-- 不存在「弱口令」这个攻击面，慢哈希只会给每个请求加无谓的 CPU 开销；
+-- 要防的只是「库被读走」，sha256 已经足够。
+CREATE TABLE IF NOT EXISTS api_tokens (
+    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    token_hash   TEXT NOT NULL UNIQUE,       -- sha256(明文)，查表键
+    owner_id     TEXT NOT NULL,              -- 这枚令牌代表哪个身份
+    name         TEXT NOT NULL DEFAULT '',   -- 用途备注，如 "opsmind-mcp"
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    last_used_at TIMESTAMPTZ,
+    -- 撤销用时间戳而不是物理删除：审计要能回答「什么时候建的、什么时候被停的」。
+    revoked_at   TIMESTAMPTZ
+);
+
+-- 「某个身份有哪些令牌」是运维最常见的查询，按 owner + 时间倒序直接覆盖它。
+CREATE INDEX IF NOT EXISTS idx_api_tokens_owner ON api_tokens (owner_id, created_at DESC);
+

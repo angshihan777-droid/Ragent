@@ -6,6 +6,11 @@
 
 统一返回 404 而不是 403：403 等于告诉对方「这个 id 真实存在，只是不归你」，
 配合可枚举的 id 就是一个存在性探测接口。不存在与无权限对外是同一个回答。
+
+身份有两个来源，Bearer 令牌优先：
+  ① 服务间调用 —— Authorization: Bearer <token>，令牌在 api_tokens 表里映射到某个身份；
+  ② 浏览器 —— OwnerCookieMiddleware 放进 request.state 的 Cookie 身份。
+两者最终都收敛成同一个 owner_id，后面的归属校验只认这一个值，不关心它是从哪来的。
 """
 from uuid import UUID
 
@@ -13,19 +18,54 @@ import asyncpg
 from fastapi import Depends, HTTPException, Request
 
 from app.db import get_pool
+from app.repositories import api_tokens as api_token_repo
 from app.repositories import projects as project_repo
+from app.security import hash_token, parse_bearer
 
 
-def get_owner_id(request: Request) -> str:
-    """取当前请求的身份 id。
+async def get_owner_id(
+    request: Request,
+    pool: asyncpg.Pool = Depends(get_pool),
+) -> str:
+    """取当前请求的身份 id：Bearer 令牌优先，其次 Cookie 身份。
 
-    值由 OwnerCookieMiddleware 放进 request.state，这里不兜底生成：
-    读不到说明中间件没装或被摘掉，那是部署事故，必须当场炸出来，
-    静默兜一个新身份只会让所有人看到空数据，反而更难查。
+    令牌路径与 Cookie 路径的失败口径刻意不同：
+      令牌无效/已撤销 → 401。令牌是显式凭证，错了必须当场告诉调用方，
+        否则脚本会拿着一个「看似成功但什么都查不到」的身份继续跑。
+      Cookie 读不到 → 直接 RuntimeError。读不到说明中间件没装或被摘掉，那是部署事故，
+        必须当场炸出来；静默兜一个新身份只会让所有人看到空数据，反而更难查。
     """
+    token = parse_bearer(request.headers.get("authorization"))
+    if token is not None:
+        owner_id = await _resolve_token_owner(pool, token)
+        if owner_id is None:
+            # 无效与已撤销对外是同一个回答：区分开等于告诉对方「这枚令牌曾经存在过」。
+            raise HTTPException(
+                status_code=401,
+                detail="访问令牌无效或已撤销",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        # 覆写 state，让「这次请求是谁」在整条链路上只有一个答案：
+        # 中间件此前可能已经按 Cookie 放了一个身份进去，下游若有人直接读 state，
+        # 不覆写就会读到另一个值。
+        request.state.owner_id = owner_id
+        return owner_id
+
     owner_id = getattr(request.state, "owner_id", None)
     if not owner_id:
         raise RuntimeError("身份中间件未生效：request.state.owner_id 缺失")
+    return owner_id
+
+
+async def _resolve_token_owner(pool: asyncpg.Pool, token: str) -> str | None:
+    """把令牌换成身份 id。查不到或已撤销返回 None。"""
+    token_hash = hash_token(token)
+    async with pool.acquire() as conn:
+        owner_id = await api_token_repo.resolve_owner(conn, token_hash)
+        if owner_id is not None:
+            # 记录使用时间；它是运维信息，失败不该让鉴权失败（这里也不吞异常，
+            # 因为同一次连接里执行，出错说明库本身有问题，比让调用方继续更该暴露）。
+            await api_token_repo.touch_last_used(conn, token_hash)
     return owner_id
 
 
