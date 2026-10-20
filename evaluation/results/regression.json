@@ -1,0 +1,258 @@
+{
+  "metrics": {
+    "queries": 20,
+    "recall_at_3": 1.0,
+    "mrr_at_3": 1.0,
+    "hit_at_1": 1
+  },
+  "thresholds": {
+    "hit_at_1": 0.85,
+    "mrr_at_3": 0.9,
+    "recall_at_3": 0.95
+  },
+  "failures": [],
+  "records": [
+    {
+      "id": "q01",
+      "question": "正式员工一年能休几天带薪假？",
+      "relevant": [
+        "leave"
+      ],
+      "ranked": [
+        "leave",
+        "benefit",
+        "onboard"
+      ]
+    },
+    {
+      "id": "q02",
+      "question": "国内出差现在住酒店一晚最多报多少？",
+      "relevant": [
+        "travel"
+      ],
+      "ranked": [
+        "travel",
+        "travel_old",
+        "meeting"
+      ]
+    },
+    {
+      "id": "q03",
+      "question": "出差回来多久要交车票？",
+      "relevant": [
+        "travel"
+      ],
+      "ranked": [
+        "travel",
+        "travel_old",
+        "meeting"
+      ]
+    },
+    {
+      "id": "q04",
+      "question": "远程连接提示E42怎么处理？",
+      "relevant": [
+        "vpn"
+      ],
+      "ranked": [
+        "vpn",
+        "password",
+        "security"
+      ]
+    },
+    {
+      "id": "q05",
+      "question": "登录密码连续输错被锁多久？",
+      "relevant": [
+        "password"
+      ],
+      "ranked": [
+        "password",
+        "alerts",
+        "backup"
+      ]
+    },
+    {
+      "id": "q06",
+      "question": "苍穹上线灰度各阶段比例和观察时间？",
+      "relevant": [
+        "release"
+      ],
+      "ranked": [
+        "release",
+        "alerts",
+        "backup"
+      ]
+    },
+    {
+      "id": "q07",
+      "question": "苍穹发布什么情况需要回退版本？",
+      "relevant": [
+        "release"
+      ],
+      "ranked": [
+        "release",
+        "alerts",
+        "backup"
+      ]
+    },
+    {
+      "id": "q08",
+      "question": "数据库全备何时做、保留多久？",
+      "relevant": [
+        "backup"
+      ],
+      "ranked": [
+        "backup",
+        "security",
+        "onboard"
+      ]
+    },
+    {
+      "id": "q09",
+      "question": "苍穹P1需要多久响应和升级？",
+      "relevant": [
+        "alerts"
+      ],
+      "ranked": [
+        "alerts",
+        "release",
+        "backup"
+      ]
+    },
+    {
+      "id": "q10",
+      "question": "入职首周要完成什么培训？",
+      "relevant": [
+        "onboard"
+      ],
+      "ranked": [
+        "onboard",
+        "meeting",
+        "alerts"
+      ]
+    },
+    {
+      "id": "q11",
+      "question": "可以用自己的邮箱转发客户个人资料吗？",
+      "relevant": [
+        "security"
+      ],
+      "ranked": [
+        "security",
+        "password",
+        "vpn"
+      ]
+    },
+    {
+      "id": "q12",
+      "question": "会议室订好了没签到会怎样？",
+      "relevant": [
+        "meeting"
+      ],
+      "ranked": [
+        "meeting",
+        "travel_old",
+        "vpn"
+      ]
+    },
+    {
+      "id": "q13",
+      "question": "家属的体检费用能报销吗？",
+      "relevant": [
+        "benefit"
+      ],
+      "ranked": [
+        "benefit",
+        "travel_old",
+        "travel"
+      ]
+    },
+    {
+      "id": "q14",
+      "question": "苍穹发布与数据库恢复演练各需要做什么？",
+      "relevant": [
+        "release",
+        "backup"
+      ],
+      "ranked": [
+        "backup",
+        "release",
+        "alerts"
+      ]
+    },
+    {
+      "id": "q15",
+      "question": "苍穹服务故障时告警响应和版本回滚的要求分别是什么？",
+      "relevant": [
+        "alerts",
+        "release"
+      ],
+      "ranked": [
+        "alerts",
+        "release",
+        "password"
+      ]
+    },
+    {
+      "id": "q16",
+      "question": "请三天以上年假找谁批？",
+      "relevant": [
+        "leave"
+      ],
+      "ranked": [
+        "leave",
+        "onboard",
+        "travel"
+      ]
+    },
+    {
+      "id": "q17",
+      "question": "试用期员工可以使用年假吗？",
+      "relevant": [
+        "leave"
+      ],
+      "ranked": [
+        "leave",
+        "onboard",
+        "benefit"
+      ]
+    },
+    {
+      "id": "q18",
+      "question": "企业邮箱密码重置能修复 VPN 设备证书吗？",
+      "relevant": [
+        "password"
+      ],
+      "ranked": [
+        "password",
+        "vpn",
+        "security"
+      ]
+    },
+    {
+      "id": "q19",
+      "question": "含客户个人信息的资料对外共享需要谁审批？",
+      "relevant": [
+        "security"
+      ],
+      "ranked": [
+        "security",
+        "release",
+        "leave"
+      ]
+    },
+    {
+      "id": "q20",
+      "question": "新员工什么时候和导师制定试用期目标？",
+      "relevant": [
+        "onboard"
+      ],
+      "ranked": [
+        "onboard",
+        "backup",
+        "benefit"
+      ]
+    }
+  ]
+}

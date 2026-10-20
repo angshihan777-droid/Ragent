@@ -68,6 +68,26 @@ export const api = {
   updateDocument: (id, body) => send("PUT", "/documents/" + id, body),
   deleteDocument: (id) => send("DELETE", "/documents/" + id),
 
+  // ---- 用量统计 ----
+  // 只读当前身份的执行账本；days 由后端限制在 1~365。
+  // no-store：刚从「模型配置」改完单价再切过来时，不能被浏览器缓存的旧响应挡住。
+  getMetrics: (days = 7) =>
+    fetch(BASE + "/metrics/summary?days=" + days, {
+      credentials: CREDENTIALS,
+      cache: "no-store",
+    }).then(toJson),
+
+  // ---- 服务就绪 ----
+  // /ready 在依赖不全时返回 503，但仍带 JSON 详情；不能用 get()，它会直接抛错。
+  getReady: () =>
+    fetch(BASE + "/ready", { credentials: CREDENTIALS, cache: "no-store" }).then(async (res) => {
+      let body = {};
+      try {
+        body = await res.json();
+      } catch (_) {}
+      return { ok: res.ok, ...body };
+    }),
+
   // ---- 提问 ----
   // 落库拿 request_id 立即返回，不等执行
   createRequest: (thread_id, content) => send("POST", "/requests", { thread_id, content }),
@@ -75,13 +95,16 @@ export const api = {
 
   // ---- LLM 配置 ----
   getLLMConfig: () => get("/config/llm"),
-  saveLLMConfig: (base_url, model, api_key, reasoning_effort) =>
+  saveLLMConfig: (base_url, model, api_key, reasoning_effort, cost_input_per_1k, cost_output_per_1k) =>
     send("PUT", "/config/llm", {
       base_url,
       model,
       // 空值一律表示「不改这一项」，后端保留库里原值——密钥和推理强度共用同一套口径
       api_key: api_key || null,
       reasoning_effort: reasoning_effort || null,
+      // 成本单价是模型配置的一部分：0 是「不估算」，null 才是「这次不改」
+      cost_input_per_1k,
+      cost_output_per_1k,
     }),
   listModels: (base_url, api_key) =>
     send("POST", "/config/llm/models", { base_url, api_key: api_key || null }),

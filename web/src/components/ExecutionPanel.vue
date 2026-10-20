@@ -5,6 +5,7 @@ import Icon from "./Icon.vue";
 const props = defineProps({
   steps: { type: Array, default: () => [] },
   sources: { type: Array, default: () => [] },
+  usage: { type: Object, default: null },
   runState: { type: String, default: "idle" },
   thread: Object,
   projectName: String,
@@ -43,11 +44,17 @@ const completed = computed(() => props.steps.filter(s => s.status === "done").le
           </span>
           <span class="s-num">{{ s.icon }}</span>
           <span class="lbl">{{ s.label }}</span>
+          <span v-if="s.duration_ms != null" class="duration">{{ s.duration_ms }} ms</span>
         </li>
       </ul>
       <p v-else class="p-empty">发送问题后，这里会记录本轮实际执行的步骤。</p>
 
       <div v-if="steps.length" class="prog-foot">已完成 {{ completed }} 个实际步骤 · {{ runState === 'running' ? '处理中' : '本轮记录' }}</div>
+      <div v-if="usage" class="usage-foot">
+        本轮消耗：输入 {{ Number(usage.input_tokens || 0).toLocaleString('zh-CN') }} ·
+        输出 {{ Number(usage.output_tokens || 0).toLocaleString('zh-CN') }} tokens ·
+        {{ Number(usage.llm_calls || 0) }} 次模型调用
+      </div>
     </section>
 
     <!-- 命中资料：检索到的资料卡片，点击溯源看原文 -->
@@ -104,8 +111,10 @@ h2 { margin: 0; font-size: var(--fs-sm); color: var(--ink); }
 @keyframes spin { to { transform: rotate(360deg); } }
 .steps .s-num { font-size: var(--fs-xs); color: var(--faint); font-variant-numeric: tabular-nums; }
 .steps .lbl { flex: 1; min-width: 0; }
+.steps .duration { flex: none; font-size: var(--fs-xs); color: var(--faint); font-variant-numeric: tabular-nums; }
 
 .prog-foot { margin-top: var(--s-3); padding-top: var(--s-3); border-top: 1px solid var(--line); font-size: var(--fs-xs); color: var(--muted); }
+.usage-foot { margin-top: var(--s-2); font-size: var(--fs-xs); color: var(--faint); line-height: 1.6; font-variant-numeric: tabular-nums; }
 .p-empty { font-size: var(--fs-sm); color: var(--muted); line-height: 1.7; margin: var(--s-2) 0 0; }
 .score-hint { font-size: var(--fs-xs); line-height: 1.6; color: var(--muted); margin: 0 0 var(--s-3); }
 

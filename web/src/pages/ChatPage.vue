@@ -9,7 +9,7 @@ import SourceDialog from "../components/SourceDialog.vue";
 import ResizeHandle from "../components/ResizeHandle.vue";
 import ExecutionPanel from "../components/ExecutionPanel.vue";
 import Icon from "../components/Icon.vue";
-const { messages, input, sending, listEl, historyError, historyLoading, steps, sources,
+const { messages, input, sending, listEl, historyError, historyLoading, steps, sources, lastUsage,
   tracing, runState, thread, creatingThread, startConversation, send, sendText,
   stop, stickToBottom, onListScroll, jumpToBottom } = useConversation();
 const panelWidth = usePreference("ragent.panelWidth", 320);
@@ -53,7 +53,7 @@ const panelCollapsed = usePreference("ragent.panelCollapsed", false);
         <div class="input-zone"><ChatComposer v-model="input" :busy="sending" :disabled="historyLoading" :project-name="store.currentProject?.name" @send="send" @stop="stop" /></div>
       </section>
       <ResizeHandle v-if="!panelCollapsed" v-model="panelWidth" :min="280" :max="480" reverse label="调整右栏宽度" />
-      <aside v-if="!panelCollapsed" class="right-rail" :style="{ width: panelWidth + 'px' }"><ExecutionPanel :steps="steps" :sources="sources" :run-state="runState" :thread="thread" :project-name="store.currentProject?.name" @trace="tracing = $event" /></aside>
+      <aside v-if="!panelCollapsed" class="right-rail" :style="{ width: panelWidth + 'px' }"><ExecutionPanel :steps="steps" :sources="sources" :usage="lastUsage" :run-state="runState" :thread="thread" :project-name="store.currentProject?.name" @trace="tracing = $event" /></aside>
       <SourceDialog v-if="tracing" :source="tracing" @close="tracing = null" />
     </template>
   </div>

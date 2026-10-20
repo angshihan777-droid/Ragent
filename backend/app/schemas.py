@@ -26,6 +26,18 @@ class RequestOut(BaseModel):
     created_at: datetime
 
 
+class MetricsSummaryOut(BaseModel):
+    """用量统计返回体：Token、调用次数、成功率与可选成本估算。"""
+    days: int
+    input_tokens: int
+    output_tokens: int
+    llm_calls: int
+    done_runs: int
+    failed_runs: int
+    success_rate: float | None
+    estimated_cost: float | None
+
+
 class IngestDocumentIn(BaseModel):
     """文档入库入参：资料归属项目，给项目 id、标题和正文，切块向量化由后端做。"""
     project_id: UUID
@@ -102,6 +114,12 @@ class LLMConfigView(BaseModel):
     key_set: bool
     # 推理强度（low/high/max）；空串表示不传该字段、由服务端定档
     reasoning_effort: str = ""
+    # 成本估算单价（元 / 1K tokens）；0 表示不估算
+    cost_input_per_1k: float = 0.0
+    cost_output_per_1k: float = 0.0
+    # 按服务地址/模型匹配到的官方参考价；前端在未配置时预填
+    cost_input_suggested: float | None = None
+    cost_output_suggested: float | None = None
 
 
 class SaveLLMConfigIn(BaseModel):
@@ -110,6 +128,9 @@ class SaveLLMConfigIn(BaseModel):
     model: str
     api_key: str | None = None
     reasoning_effort: str | None = None
+    # None 表示不改；0 表示明确选择「不估算」
+    cost_input_per_1k: float | None = Field(default=None, ge=0, le=100000)
+    cost_output_per_1k: float | None = Field(default=None, ge=0, le=100000)
 
 
 class ListModelsIn(BaseModel):

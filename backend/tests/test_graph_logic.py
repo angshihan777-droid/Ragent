@@ -6,6 +6,46 @@ from langchain_core.messages import AIMessage, HumanMessage
 from app.agent import graph
 
 
+def test_elapsed_ms_never_negative():
+    assert graph._elapsed_ms(10.0, 10.123) == 123
+    assert graph._elapsed_ms(10.0, 9.0) == 0
+
+
+class _Acquire:
+    async def __aenter__(self):
+        return object()
+
+    async def __aexit__(self, *exc):
+        return False
+
+
+class _Pool:
+    def acquire(self):
+        return _Acquire()
+
+
+def test_context_uses_app_thread_id_not_checkpoint_key(monkeypatch):
+    seen = {}
+
+    async def fake_history(_conn, thread_id, _request_id):
+        seen["thread_id"] = thread_id
+        return []
+
+    async def fake_count(_conn, _project_id):
+        return 0
+
+    monkeypatch.setattr(graph, "history_before_request", fake_history)
+    monkeypatch.setattr(graph.documents, "count_documents", fake_count)
+    config = {"configurable": {
+        "pool": _Pool(), "thread_id": "thread:request",
+        "app_thread_id": "thread", "request_id": "request", "project_id": "project",
+    }}
+
+    asyncio.run(graph._context({"question": "q"}, config))
+
+    assert seen["thread_id"] == "thread"
+
+
 def _state(**kw):
     base = {"sources": [], "queries": [], "rounds": 1, "sufficient": False, "action": "retrieve"}
     return {**base, **kw}

@@ -81,6 +81,7 @@ async function removeThread(projectId, id, title) {
       <RouterLink to="/chat" @click="store.currentThreadId = null"><Icon name="message-plus" /> 新对话</RouterLink>
       <RouterLink to="/documents"><Icon name="files" /> 项目资料</RouterLink>
       <RouterLink to="/library"><Icon name="library" /> 知识库图书馆</RouterLink>
+      <RouterLink to="/metrics"><Icon name="chart" /> 使用统计</RouterLink>
       <a class="nav-link" href="https://angshihan777-droid.github.io/Ragent/" target="_blank" rel="noopener"><Icon name="book" /> 使用介绍</a>
     </nav>
     <div class="section-head">

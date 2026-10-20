@@ -33,6 +33,7 @@ const P = {
   stop: "M6 6h12v12H6z",
   square_dot: "M12 12h.01",
   book: "M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z",
+  chart: "M3 3v18h18M7 16v-5M12 16V8M17 16v-9",
 };
 </script>
 

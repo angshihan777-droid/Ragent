@@ -16,6 +16,24 @@
 - **可靠执行**：请求落库后进入 FIFO 队列，执行身份固定为 `knowledge-base`，worker 维护租约、心跳与超时恢复。
 - **多格式入库**：支持 `.pdf / .docx / .md / .markdown / .txt`，单文件最大 20 MB，保留标题路径、页码与块序号。
 
+## Harness 能力（当前实现）
+
+| 能力 | 实现 | 边界 |
+|---|---|---|
+| 输入防护 | Prompt 注入检测（NFKC / 去零宽 / 中英文规则），命中直接 400 且不落库 | 只拦已知的指令覆盖与提示词套取话术，防不住语义改写 |
+| 限流 | 按身份每分钟 10 次，Redis 原子滑动窗口（Lua）；Redis 故障回退进程内；超限 429 + `Retry-After` | 多副本共享 Redis 计数 |
+| 安全审计 | `audit_logs` 记录 `rate_limited` 与 `prompt_injection_blocked`，只存规则编号、长度、重试秒数 | 不记录用户原文 |
+| Token 账本 | `agent_runs.usage` 汇总输入/输出/调用次数，右侧执行面板显示本轮消耗，「使用统计」页按 7/30 天聚合 | 只统计当前身份；单价在「模型配置」页按身份填写后估算 |
+| 检索容错 | embedding 3s、召回 5s、rerank 8s 分段超时；rerank 超时降级为召回顺序 | embedding/召回失败明确报「检索失败」，不伪装成「没资料」 |
+| 回归测试 | `pytest -q` 覆盖注入、限流、统计、检索降级，全部不依赖 PG/Redis/模型 | 纯逻辑测试，不替代端到端评测 |
+| 运行可靠性 | worker 每 5 秒刷新 Redis 心跳（15 秒 TTL）；`/ready` 返回 worker 状态、排队/执行中数量和最早排队时长；前端每 15 秒轮询并在 worker 掉线时显示提示 | 心跳按进程；多副本部署共享同一个 Redis |
+| 持续集成 | GitHub Actions 跑后端 `pytest` 与前端 `npm test` + `npm run build` | 需要仓库启用 Actions |
+| 断点续传 | LangGraph `PostgresSaver` 持久化每个请求的图状态；worker 重启后从最后 checkpoint 续跑，已完成节点不重复执行 | 需要 `langgraph-checkpoint-postgres` 与 psycopg；checkpoint 表随启动创建 |
+| 引用一致性 | 逐句检查带 `[S#]` 的结论与被引片段词面重叠；低重叠追加警告 | 词面检查，不是语义级幻觉检测 |
+| 生产镜像 | 非 root（uid 10001）；镜像不带 `--reload`，开发热重载由 compose 的 command 提供；api/worker 均有 healthcheck | 生产部署仍需 HTTPS 与真实登录体系 |
+
+关键取舍见 [`docs/ADR.md`](docs/ADR.md)。
+
 ## 快速开始
 
 ```bash

@@ -6,7 +6,12 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app ./app
+# 生产镜像不带 --reload；开发态的热重载由 docker-compose 的 command 覆盖。
+RUN useradd --create-home --uid 10001 appuser \
+    && mkdir -p /tmp/fastembed_cache \
+    && chown -R appuser:appuser /tmp/fastembed_cache
 
-# --reload 便于开发期热重载；生产不用这个 Dockerfile
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+COPY --chown=appuser:appuser app ./app
+USER appuser
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

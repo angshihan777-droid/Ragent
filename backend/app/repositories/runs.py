@@ -112,6 +112,23 @@ async def get_run(conn: asyncpg.Connection, run_id) -> asyncpg.Record | None:
         run_id,
     )
 
+
+async def get_usage_by_request(conn: asyncpg.Connection, request_id) -> dict | None:
+    """取一次请求最近一条 run 的 usage，供 SSE 终态把本轮 Token 用量带回前端。
+
+    重试会产生多条 run；成功收尾的那条才带 usage，按时间倒序取第一条即可。
+    """
+    row = await conn.fetchrow(
+        """
+        SELECT usage FROM agent_runs
+        WHERE request_id = $1
+        ORDER BY created_at DESC
+        LIMIT 1
+        """,
+        request_id,
+    )
+    return row["usage"] if row else None
+
 async def exhausted_runs(conn: asyncpg.Connection, lease_timeout_seconds: int, max_attempts: int) -> list:
     """心跳已停、且已执行满 max_attempts 次的 run：不再重投，交给上层判失败。
 

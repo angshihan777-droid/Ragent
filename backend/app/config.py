@@ -73,6 +73,14 @@ class Settings(BaseSettings):
     # RAG rerank：两阶段检索的精排模型，同样走本地 fastembed(cross-encoder)。
     rerank_model: str = "BAAI/bge-reranker-base"
 
+    # 单身份每分钟允许的提问次数。进程内滑动窗口；多副本部署需换成 Redis。
+    rate_limit_per_minute: int = 10
+
+    # 成本估算单价（元 / 1K tokens）。默认 0 表示不估算，前端显示「未配置」，
+    # 避免把某家服务商的价格硬编码进代码。
+    cost_input_per_1k: float = 0.0
+    cost_output_per_1k: float = 0.0
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -12,6 +12,10 @@ const model = ref("");
 const models = ref([]); // 拉取到的可选模型 id 列表
 // 推理强度：留空表示不改。推理模型默认 high 档「想很久」，简单问答也会拖到几十秒。
 const effort = ref("low");
+const costInput = ref(0);
+const costOutput = ref(0);
+const costHint = ref("");
+const costSuggested = ref({ input: 0, output: 0 });
 const EFFORT_OPTIONS = [
   { value: "low", label: "low（快，推荐日常提问）" },
   { value: "high", label: "high（慢，复杂推理）" },
@@ -27,6 +31,37 @@ const msgType = ref(""); // "ok" | "err"
 function flash(type, text) {
   msgType.value = type;
   msg.value = text;
+}
+
+// 回显配置：已保存的单价优先；两者都为 0 时，按后端给出的官方参考价预填。
+function applyConfig(cfg) {
+  baseUrl.value = cfg.base_url;
+  model.value = cfg.model;
+  keySet.value = cfg.key_set;
+  effort.value = cfg.reasoning_effort || "low";
+  costSuggested.value = {
+    input: Number(cfg.cost_input_suggested || 0),
+    output: Number(cfg.cost_output_suggested || 0),
+  };
+  const savedInput = Number(cfg.cost_input_per_1k || 0);
+  const savedOutput = Number(cfg.cost_output_per_1k || 0);
+  if (savedInput === 0 && savedOutput === 0 && costSuggested.value.input > 0) {
+    costInput.value = costSuggested.value.input;
+    costOutput.value = costSuggested.value.output;
+    costHint.value = "已按 DeepSeek 官方参考价预填（高峰 + 缓存未命中），保存后生效。";
+  } else {
+    costInput.value = savedInput;
+    costOutput.value = savedOutput;
+    costHint.value = "";
+  }
+  models.value = cfg.model ? [cfg.model] : [];
+}
+
+function fillSuggested() {
+  if (!costSuggested.value.input) return;
+  costInput.value = costSuggested.value.input;
+  costOutput.value = costSuggested.value.output;
+  costHint.value = "已按 DeepSeek 官方参考价填入，保存后生效。";
 }
 
 // ---- 身份（§3.7 身份可迁移）----
@@ -61,11 +96,7 @@ async function doSwitchIdentity() {
     targetId.value = "";
     // 配置也跟着身份变了，重新回显一遍，否则页面上还是上一个身份的地址和模型
     const cfg = await api.getLLMConfig();
-    baseUrl.value = cfg.base_url;
-    model.value = cfg.model;
-    keySet.value = cfg.key_set;
-    effort.value = cfg.reasoning_effort || "low";
-    models.value = cfg.model ? [cfg.model] : [];
+    applyConfig(cfg);
     idMsgType.value = "ok";
     idMsg.value = "已切换到 " + store.ownerId + "，数据已重新加载。";
   } catch (e) {
@@ -87,12 +118,8 @@ onMounted(async () => {
       ownerId.value = "";
     }
     const cfg = await api.getLLMConfig();
-    baseUrl.value = cfg.base_url;
-    model.value = cfg.model;
-    keySet.value = cfg.key_set;
-    effort.value = cfg.reasoning_effort || "low";
-    // 当前已保存的模型先放进下拉，未拉取列表时也能看到并保存
-    if (cfg.model) models.value = [cfg.model];
+    // applyConfig 同时把当前已保存的模型放进下拉，未拉取列表时也能看到并保存
+    applyConfig(cfg);
   } catch (e) {
     flash("err", "读取配置失败: " + e.message);
   } finally {
@@ -128,12 +155,14 @@ async function save() {
   msg.value = "";
   try {
     const view = await api.saveLLMConfig(
-      baseUrl.value.trim(), model.value, apiKey.value, effort.value
+      baseUrl.value.trim(), model.value, apiKey.value, effort.value,
+      Number(costInput.value || 0), Number(costOutput.value || 0),
     );
     keySet.value = view.key_set;
     store.llm = view;
     store.models = [...new Set([view.model, ...store.models])];
     apiKey.value = ""; // 保存后清空输入框，密钥不回显
+    costHint.value = "";
     flash("ok", "已保存。");
   } catch (e) {
     flash("err", "保存失败: " + e.message);
@@ -192,6 +221,27 @@ async function save() {
           <option v-for="o in EFFORT_OPTIONS" :key="o.value" :value="o.value">{{ o.label }}</option>
         </select>
         <small>推理模型（如 DeepSeek V4）默认按 high 档思考，一句问候也要几十秒；改成 low 可把单次调用从 ~40 秒压到 ~1 秒。一次问答要调 2~3 次模型，差别会成倍放大。</small>
+      </div>
+
+      <div class="field">
+        <div class="field-head">
+          <label>成本估算单价</label>
+          <button class="quiet" type="button" :disabled="!costSuggested.input" @click="fillSuggested">
+            <Icon name="refresh" :size="14" />填入官方参考价
+          </button>
+        </div>
+        <div class="cost-row">
+          <label class="cost-item" for="cfg-cost-input">
+            <span>输入（元 / 1K tokens）</span>
+            <input id="cfg-cost-input" v-model.number="costInput" type="number" min="0" step="0.0001" :disabled="loading" />
+          </label>
+          <label class="cost-item" for="cfg-cost-output">
+            <span>输出（元 / 1K tokens）</span>
+            <input id="cfg-cost-output" v-model.number="costOutput" type="number" min="0" step="0.0001" :disabled="loading" />
+          </label>
+        </div>
+        <small v-if="costHint" class="cost-hint">{{ costHint }}</small>
+        <small>只用于「使用统计」页估算成本，不影响模型调用；留 0 表示不估算。</small>
       </div>
 
       <div v-if="msg" :class="msgType === 'ok' ? 'notice' : 'error-box'" role="status">
@@ -258,6 +308,10 @@ async function save() {
 .field-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); margin-bottom: var(--s-2); }
 .field-head label { margin: 0; }
 .field-head button { padding: var(--s-2) var(--s-3); font-size: var(--fs-xs); }
+.cost-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); }
+.cost-item { display: flex; flex-direction: column; gap: var(--s-2); margin: 0; font-weight: 400; }
+.cost-item span { font-size: var(--fs-xs); color: var(--muted); font-weight: 400; }
+.cost-hint { color: var(--brand-ink); }
 label { display: block; margin: 0 0 var(--s-2); font-size: var(--fs-sm); font-weight: 500; color: var(--text); }
 small { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-2); color: var(--faint); font-size: var(--fs-xs); line-height: 1.6; }
 .notice, .error-box { margin-top: var(--s-5); }
@@ -268,5 +322,5 @@ small { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2); ma
 /* 身份 id 是随机 uuid，窄屏下必须允许换行，否则会把卡片撑出横向滚动条 */
 .id-value { flex: 1; min-width: 0; padding: var(--s-2) var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-2); font-size: var(--fs-xs); word-break: break-all; user-select: all; }
 .actions { display: flex; justify-content: flex-end; margin-top: var(--s-5); padding-top: var(--s-5); border-top: 1px solid var(--border-soft); }
-@media (max-width: 600px) { .config { padding: var(--s-5) var(--s-4); } }
+@media (max-width: 600px) { .config { padding: var(--s-5) var(--s-4); } .cost-row { grid-template-columns: 1fr; } }
 </style>

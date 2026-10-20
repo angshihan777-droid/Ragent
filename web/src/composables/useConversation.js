@@ -25,6 +25,7 @@ const historyLoading = ref(false);
 onBeforeUnmount(() => { viewVersion++; streamController?.abort(); });
 const steps = ref([]);         // [{key,label,icon,status}] status: pending|running|done
 const sources = ref([]);       // [{title,content}]
+const lastUsage = ref(null);   // 本轮 Token 用量：{input_tokens,output_tokens,llm_calls}
 const tracing = ref(null);     // 点击溯源时展开的那条 {title,content}
 const runState = ref("idle");  // idle | running | done | error
 
@@ -126,7 +127,7 @@ async function sendText(text) {
   streamController = controller;
   // 新一轮：清空上一轮的步骤与来源
   steps.value = [];
-  sources.value = []; tracing.value = null; runState.value = "running";
+  sources.value = []; lastUsage.value = null; tracing.value = null; runState.value = "running";
   messages.value.push({ role: "user", content: text });
   const reply = reactive({ role: "assistant", content: "", pending: true, error: false, sources: [] });
   messages.value.push(reply);
@@ -157,6 +158,7 @@ async function sendText(text) {
     );
     if (version !== viewVersion) return;
     reply.pending = false;
+    lastUsage.value = result.usage || null;
     if (result.status === "done") {
       reply.content = result.content || reply.content || "(空回复)";
       runState.value = "done";
@@ -188,5 +190,5 @@ async function sendText(text) {
   }
 }
 
-return { messages, input, sending, listEl, historyError, historyLoading, steps, sources, tracing, runState, thread, creatingThread, startConversation, send, sendText, stop, stickToBottom, onListScroll, jumpToBottom };
+return { messages, input, sending, listEl, historyError, historyLoading, steps, sources, lastUsage, tracing, runState, thread, creatingThread, startConversation, send, sendText, stop, stickToBottom, onListScroll, jumpToBottom };
 }

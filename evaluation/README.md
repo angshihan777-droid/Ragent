@@ -22,3 +22,18 @@ docker compose cp api:/tmp/evaluation/results/latest.json evaluation/results/lat
 ```
 
 The live-provider section runs only when the existing database has an API configuration. It performs a small JSON-mode compatibility smoke check and two synthetic graph questions; it does not upload the preserved resume. Retrieval numbers are a small engineering regression signal, not a general benchmark.
+
+## 20-question CI gate
+
+`regression.py` is the fast, deterministic gate used by CI. It creates a temporary
+database on the target PostgreSQL instance, ingests the frozen corpus, runs the
+20 retrieval questions with the real embedding + rerank models, and exits non-zero
+when any threshold is missed:
+
+```bash
+PYTHONPATH=backend DATABASE_URL=postgresql://ragent:ragent@localhost:5432/ragent \
+  python evaluation/regression.py
+```
+
+Current thresholds: Hit@1 ≥ 0.85, MRR@3 ≥ 0.90, Recall@3 ≥ 0.95.
+The result is written to `evaluation/results/regression.json`.

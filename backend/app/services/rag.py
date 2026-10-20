@@ -4,8 +4,10 @@
 资料按项目归属：同项目多会话共享同一份资料，检索时按 project_id 圈定范围。
 """
 from collections import defaultdict, deque
+import asyncio
 import math
 import json
+import logging
 
 import asyncpg
 
@@ -16,6 +18,14 @@ from app.agent.rerank import rerank
 from app.repositories import documents
 
 RECALL_SIZE = 20
+
+log = logging.getLogger(__name__)
+
+# 分段超时：embedding/召回失败说明基础设施坏了，向上抛；
+# rerank 只是精度增强，超时降级为召回顺序，不把故障伪装成「没资料」。
+EMBED_TIMEOUT_SECONDS = 3.0
+SEARCH_TIMEOUT_SECONDS = 5.0
+RERANK_TIMEOUT_SECONDS = 8.0
 
 
 async def ingest_document(pool, project_id, title, content=None, *, blocks=None, source_hash=None):
@@ -89,10 +99,13 @@ async def retrieve(
     rerank 慢但准，只在这一小批候选上做精细打分，兼顾速度与准确。
     返回每块的原文和所属文档标题，供前端「点击溯源」定位到具体来源文件。
     """
-    query_embedding = await embed_query(question)
+    query_embedding = await asyncio.wait_for(
+        embed_query(question), timeout=EMBED_TIMEOUT_SECONDS
+    )
     async with pool.acquire() as conn:
-        rows = await documents.search_chunks_with_doc(
-            conn, project_id, query_embedding, RECALL_SIZE
+        rows = await asyncio.wait_for(
+            documents.search_chunks_with_doc(conn, project_id, query_embedding, RECALL_SIZE),
+            timeout=SEARCH_TIMEOUT_SECONDS,
         )
     if not rows:
         return []
@@ -101,7 +114,16 @@ async def retrieve(
     for row in rows:
         rows_by_content[row["content"]].append(row)
     candidates = [r["content"] for r in rows]
-    ranked = await rerank(question, candidates, top_k)
+    try:
+        ranked = await asyncio.wait_for(
+            rerank(question, candidates, top_k), timeout=RERANK_TIMEOUT_SECONDS
+        )
+    except asyncio.TimeoutError:
+        log.warning(
+            "Rerank timed out after %.1fs; falling back to recall order project=%s",
+            RERANK_TIMEOUT_SECONDS, project_id,
+        )
+        ranked = candidates[:top_k]
     hits = []
     for content in ranked:
         row = rows_by_content[content].popleft()

@@ -3,6 +3,7 @@ import asyncio
 import json
 import logging
 import re
+import time
 from typing import Literal, TypedDict
 
 from langchain_core.messages import HumanMessage, SystemMessage, convert_to_messages, trim_messages
@@ -13,6 +14,7 @@ from langgraph.graph import END, START, StateGraph
 from pydantic import BaseModel, Field
 
 from app.agent.structured import invoke_json
+from app.agent.verification import verify_citations
 from app.config import get_settings
 from app.repositories import documents
 from app.repositories.messages import history_before_request
@@ -56,6 +58,7 @@ class AgentState(TypedDict, total=False):
     next_query: str
     retrieval_error: str
     response: str
+    verification: dict
 
 
 async def _build_llm(pool, owner_id: str):
@@ -88,8 +91,9 @@ async def _build_llm(pool, owner_id: str):
 
 async def _context(state, config):
     cfg = config["configurable"]
+    app_thread_id = cfg.get("app_thread_id") or cfg["thread_id"]
     async with cfg["pool"].acquire() as conn:
-        history = await history_before_request(conn, cfg["thread_id"], cfg["request_id"])
+        history = await history_before_request(conn, app_thread_id, cfg["request_id"])
         # 决策节点要用：本项目的资料数量是客观事实，不能靠模型猜。
         material_count = await documents.count_documents(conn, cfg["project_id"])
     # 1. 打标签：数据库的 role 字符串 → LangChain 消息对象（user→Human，assistant→AI）
@@ -149,7 +153,9 @@ async def _retrieve(state, config):
     query = state["query"]
     result = {"rounds": state["rounds"] + 1, "queries": [*state["queries"], query]}
     try:
-        hits = await asyncio.wait_for(rag.retrieve(cfg["pool"], cfg["project_id"], query), timeout=90)
+        # 整体兜底 20s：rag.retrieve 内部已按 embed/召回/rerank 分段限时，
+        # 这里只防某一层卡死后把整个 run 拖到租约超时。
+        hits = await asyncio.wait_for(rag.retrieve(cfg["pool"], cfg["project_id"], query), timeout=20)
     except Exception:
         # 不把基础设施故障伪装成“文档不存在”；详细异常只写服务端日志。
         log.exception("Knowledge retrieval failed")
@@ -242,10 +248,24 @@ async def _validate(state):
     return {"response": answer}
 
 
-def _build_graph():
+def _verify(state):
+    """引用一致性检查：不通过时在正文后追加可读警告，不阻断回答。"""
+    result = verify_citations(state["response"], state["sources"])
+    if not result["unverified"]:
+        return {"response": state["response"], "verification": result}
+    lines = [f"- {item['claim']}" for item in result["unverified"][:3]]
+    warning = (
+        "\n\n> ⚠️ 以下结论未能在引用片段中找到足够依据：\n> "
+        + "\n> ".join(lines)
+    )
+    return {"response": state["response"] + warning, "verification": result}
+
+
+def _build_graph(checkpointer=None):
     graph = StateGraph(AgentState)
     for name, node in [("context", _context), ("decide", _decide), ("retrieve", _retrieve),
-                       ("evidence", _check), ("rewrite", _rewrite), ("answer", _answer), ("validate", _validate)]:
+                       ("evidence", _check), ("rewrite", _rewrite), ("answer", _answer),
+                       ("validate", _validate), ("verify", _verify)]:
         graph.add_node(name, node)
     graph.add_edge(START, "context")
     graph.add_edge("context", "decide")
@@ -254,25 +274,85 @@ def _build_graph():
     graph.add_conditional_edges("evidence", _after_check)
     graph.add_edge("rewrite", "retrieve")
     graph.add_edge("answer", "validate")
-    graph.add_edge("validate", END)
-    return graph.compile()
+    graph.add_edge("validate", "verify")
+    graph.add_edge("verify", END)
+    return graph.compile(checkpointer=checkpointer)
 
 
 _GRAPH = _build_graph()
+_CHECKPOINTED_GRAPH = None
+_checkpoint_stack = None
+
+
+def set_checkpointer(checkpointer) -> None:
+    """启动时注入 Postgres checkpointer；没有注入时退回无持久化的图。"""
+    global _CHECKPOINTED_GRAPH
+    _CHECKPOINTED_GRAPH = _build_graph(checkpointer)
+
+
+async def init_checkpointer(dsn: str) -> None:
+    """建立并初始化 PostgresSaver；API 与 worker 两个进程都要调用。"""
+    global _checkpoint_stack
+    if _checkpoint_stack is not None:
+        return
+    from contextlib import AsyncExitStack
+    from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+
+    stack = AsyncExitStack()
+    try:
+        saver = await stack.enter_async_context(AsyncPostgresSaver.from_conn_string(dsn))
+        await saver.setup()
+    except Exception:
+        await stack.aclose()
+        raise
+    set_checkpointer(saver)
+    _checkpoint_stack = stack
+
+
+async def close_checkpointer() -> None:
+    global _checkpoint_stack
+    if _checkpoint_stack is not None:
+        await _checkpoint_stack.aclose()
+        _checkpoint_stack = None
 STEP_LABELS = {"context": "准备会话上下文", "decide": "理解问题与决策", "retrieve": "检索与重排",
-               "evidence": "检查证据", "rewrite": "改写查询并补查", "answer": "生成回答", "validate": "检查引用"}
+               "evidence": "检查证据", "rewrite": "改写查询并补查", "answer": "生成回答",
+               "validate": "检查引用", "verify": "检查引用一致性"}
+
+
+def _elapsed_ms(started_at: float, now: float) -> int:
+    """单调时钟差值转毫秒；防御时钟回拨导致的负数。"""
+    return max(0, round((now - started_at) * 1000))
 
 
 async def stream_agent(question, pool, project_id, thread_id, request_id, owner_id):
     # 一次请求只读一次配置、建一个模型客户端，各节点从 configurable 里取，不再每个节点重建。
     # owner_id 决定用谁的模型配置：配置按身份隔离，不能退回到「全局唯一一份」。
     model = await _build_llm(pool, owner_id)
+    # checkpointer 用「会话 + 请求」做键：同一请求重试能续跑，新请求不会读到上一轮状态。
+    checkpoint_thread = f"{thread_id}:{request_id}"
     config = {"recursion_limit": 16, "configurable": {
-        "pool": pool, "project_id": project_id, "thread_id": thread_id, "request_id": request_id,
-        "model": model}}
+        "pool": pool, "project_id": project_id, "app_thread_id": thread_id,
+        "thread_id": checkpoint_thread, "request_id": request_id, "model": model}}
     usage = {"input_tokens": 0, "output_tokens": 0, "llm_calls": 0}
+    trace_id = str(request_id)
+    step_started: dict[str, float] = {}
+    compiled = _CHECKPOINTED_GRAPH or _GRAPH
+    resume_input = {"question": question}
+    if _CHECKPOINTED_GRAPH is not None:
+        snapshot = await _CHECKPOINTED_GRAPH.aget_state(config)
+        if snapshot and snapshot.values:
+            saved_sources = snapshot.values.get("sources") or []
+            if saved_sources:
+                yield "sources", saved_sources
+            if not snapshot.next and snapshot.values.get("response"):
+                # 图已经跑完、但上一次没来得及提交数据库：直接回放终态，不重复调模型。
+                yield "final", snapshot.values["response"]
+                yield "usage", usage
+                return
+            # 有未完成的 checkpoint 就续跑；没有可用终态则从头开始。
+            resume_input = None if snapshot.next else {"question": question}
     # 决策/证据检查的模型内容不外传。回答增量只用于即时显示，权威正文来自 validate。
-    async for event in _GRAPH.astream_events({"question": question}, config=config, version="v2"):
+    async for event in compiled.astream_events(resume_input, config=config, version="v2"):
         name, kind = event.get("name"), event["event"]
         # 每次模型调用结束时累加 token 用量（decide/evidence/answer 都算，成本要算全）
         if kind == "on_chat_model_end":
@@ -291,13 +371,21 @@ async def stream_agent(question, pool, project_id, thread_id, request_id, owner_
         if name not in STEP_LABELS or kind not in ("on_chain_start", "on_chain_end"):
             continue
         key = str(event["run_id"])
-        yield "step", {"key": key, "node": name, "label": STEP_LABELS[name],
-                       "status": "running" if kind == "on_chain_start" else "done"}
+        step = {"key": key, "node": name, "label": STEP_LABELS[name],
+                "status": "running" if kind == "on_chain_start" else "done",
+                "trace_id": trace_id}
+        if kind == "on_chain_start":
+            step_started[key] = time.monotonic()
+        else:
+            started = step_started.pop(key, None)
+            if started is not None:
+                step["duration_ms"] = _elapsed_ms(started, time.monotonic())
+        yield "step", step
         if kind == "on_chain_end":
             output = event["data"].get("output") or {}
             if name == "retrieve":
                 yield "sources", output.get("sources", [])
-            elif name == "validate":
+            elif name == "verify":
                 # 权威正文：只在事务提交后随 done 落地。这里不再当作增量推送，
                 # 否则前端先把已流出的正文追一遍、done 再覆盖一次，中途会看到重复。
                 yield "final", output["response"]

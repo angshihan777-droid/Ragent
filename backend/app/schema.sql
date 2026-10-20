@@ -307,3 +307,20 @@ CREATE INDEX IF NOT EXISTS idx_api_tokens_owner ON api_tokens (owner_id, created
 -- 而「用哪个档位的模型」和 base_url/model/api_key 一样属于模型接入配置，放在同一行才自洽。
 ALTER TABLE llm_config ADD COLUMN IF NOT EXISTS reasoning_effort TEXT;
 
+-- 成本估算单价（元 / 1K tokens）：和模型接入配置放在同一行、按身份隔离。
+-- 默认 0 表示不估算；用户在「模型配置」页填写后，统计页直接使用这里的值，
+-- 不再要求改 .env 或重启进程。
+ALTER TABLE llm_config ADD COLUMN IF NOT EXISTS cost_input_per_1k NUMERIC(12,6) NOT NULL DEFAULT 0;
+ALTER TABLE llm_config ADD COLUMN IF NOT EXISTS cost_output_per_1k NUMERIC(12,6) NOT NULL DEFAULT 0;
+
+-- 安全审计：记录被拦截的注入、限流等事件；只写结构化摘要，不落攻击原文。
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    owner_id   TEXT NOT NULL,
+    action     TEXT NOT NULL,
+    detail     JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_owner_time ON audit_logs (owner_id, created_at DESC);
+

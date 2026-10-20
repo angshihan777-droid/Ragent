@@ -44,7 +44,8 @@ async def publish_step(redis: aioredis.Redis, request_id, step: dict) -> None:
 
 
 async def publish_done(
-    redis: aioredis.Redis, request_id, status: str, content: str | None, error: str | None
+    redis: aioredis.Redis, request_id, status: str, content: str | None, error: str | None,
+    usage: dict | None = None,
 ) -> None:
     """发布一条请求终态事件（done/failed），带完整内容做兜底。
 
@@ -58,6 +59,7 @@ async def publish_done(
             "status": status,
             "content": content,
             "error": error,
+            "usage": usage,
         }
     )
     await redis.publish(request_channel(request_id), payload)

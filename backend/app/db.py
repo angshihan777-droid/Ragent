@@ -12,6 +12,11 @@ from fastapi import FastAPI
 
 from app.config import get_settings
 
+# worker 存活心跳：每个 worker 进程每 5 秒刷新一次，15 秒没刷新即视为掉线。
+# 放 Redis 而不是 PG：心跳是易失状态，不值得每次写库。
+WORKER_HEARTBEAT_PREFIX = "ragent:worker:"
+WORKER_HEARTBEAT_TTL_SECONDS = 15
+
 # 进程级共享的连接池/客户端，由 lifespan 负责建立和释放
 pg_pool: asyncpg.Pool | None = None
 redis_client: aioredis.Redis | None = None
@@ -30,9 +35,13 @@ async def lifespan(app: FastAPI):
     # 启动执行幂等建表与兼容迁移
     async with pg_pool.acquire() as conn:
         await conn.execute(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    # 图执行状态持久化：同一请求重试时能从最后一个 checkpoint 续跑。
+    from app.agent import graph as agent_graph
     try:
+        await agent_graph.init_checkpointer(settings.database_url)
         yield
     finally:
+        await agent_graph.close_checkpointer()
         if pg_pool is not None:
             await pg_pool.close()
         if redis_client is not None:
@@ -79,3 +88,43 @@ async def check_redis() -> bool:
         return bool(await redis_client.ping())
     except Exception:
         return False
+
+
+async def check_worker() -> bool:
+    """是否有 worker 在刷新心跳；没有就说明请求会一直排队。"""
+    if redis_client is None:
+        return False
+    try:
+        async for _ in redis_client.scan_iter(match=WORKER_HEARTBEAT_PREFIX + "*", count=100):
+            return True
+        return False
+    except Exception:
+        return False
+
+
+async def queue_snapshot() -> dict:
+    """返回执行队列的积压情况；查不到时用 None，表示「未知」而不是 0。"""
+    empty = {"pending": None, "running": None, "oldest_pending_seconds": None}
+    if pg_pool is None:
+        return empty
+    try:
+        async with pg_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT
+                    count(*) FILTER (WHERE status = 'pending') AS pending,
+                    count(*) FILTER (WHERE status = 'running') AS running,
+                    EXTRACT(EPOCH FROM (
+                        now() - min(created_at) FILTER (WHERE status = 'pending')
+                    )) AS oldest_pending_seconds
+                FROM agent_runs
+                """
+            )
+    except Exception:
+        return empty
+    oldest = row["oldest_pending_seconds"]
+    return {
+        "pending": int(row["pending"] or 0),
+        "running": int(row["running"] or 0),
+        "oldest_pending_seconds": round(float(oldest), 1) if oldest is not None else None,
+    }

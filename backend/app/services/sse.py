@@ -5,7 +5,7 @@ import json
 import time
 import redis.asyncio as aioredis
 from app.events import request_channel
-from app.repositories import messages, requests
+from app.repositories import messages, requests, runs
 from app.services.errors import public_error
 
 RECONCILE_INTERVAL_SECONDS = 2
@@ -23,13 +23,15 @@ async def _terminal(pool, request_id):
         if req["status"] not in ("done", "failed"):
             return None
         reply = await messages.get_assistant_reply(conn, request_id)
+        usage = await runs.get_usage_by_request(conn, request_id)
     events = []
     if reply:
         events.append(_event("sources", {"sources": json.loads(reply["sources"])}))
         for step in json.loads(reply["steps"]):
             events.append(_event("step", {"step": step}))
     events.append(_event("done", {"status": req["status"], "content": reply["content"] if reply else None,
-                                 "error": public_error(req["error"]) if req["error"] else None}))
+                                 "error": public_error(req["error"]) if req["error"] else None,
+                                 "usage": usage}))
     return events
 
 

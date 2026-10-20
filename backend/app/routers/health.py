@@ -6,7 +6,7 @@
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from app.db import check_postgres, check_redis
+from app.db import check_postgres, check_redis, check_worker, queue_snapshot
 
 router = APIRouter()
 
@@ -19,13 +19,21 @@ async def health():
 
 @router.get("/ready")
 async def ready():
-    """PG 和 Redis 都通才 200；任一不通返回 503 并标明。"""
+    """PG、Redis、worker 都就绪才 200；任一不通返回 503 并标明。"""
     pg_ok = await check_postgres()
     redis_ok = await check_redis()
-    if pg_ok and redis_ok:
-        return {"status": "ok", "postgres": True, "redis": True}
+    worker_ok = await check_worker() if redis_ok else False
+    queue = await queue_snapshot() if pg_ok else {
+        "pending": None, "running": None, "oldest_pending_seconds": None,
+    }
+    payload = {
+        "status": "ok" if (pg_ok and redis_ok and worker_ok) else "not_ready",
+        "postgres": pg_ok,
+        "redis": redis_ok,
+        "worker": worker_ok,
+        "queue": queue,
+    }
+    if pg_ok and redis_ok and worker_ok:
+        return payload
     # 依赖未就绪：显式 503，暴露具体哪个没通，便于排查
-    return JSONResponse(
-        status_code=503,
-        content={"status": "not_ready", "postgres": pg_ok, "redis": redis_ok},
-    )
+    return JSONResponse(status_code=503, content=payload)

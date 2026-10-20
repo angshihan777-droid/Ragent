@@ -27,6 +27,8 @@ services:
 
   api:
     build: ./backend
+    # 开发态保留热重载；生产镜像本身不带 --reload
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     ports:
       # 只有 api 需要对外：你用浏览器访问它
       - "8000:8000"
@@ -41,6 +43,12 @@ services:
       # 挂载源码，配合 --reload 改代码即生效
       - ./backend/app:/app/app
       - fastembed_cache:/tmp/fastembed_cache
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     depends_on:
       # 等依赖 healthcheck 通过再启动，避免启动瞬间连不上
       postgres:
@@ -62,6 +70,12 @@ services:
       # 同样挂源码，改 worker 代码后重启容器即生效
       - ./backend/app:/app/app
       - fastembed_cache:/tmp/fastembed_cache
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os,redis,sys; r=redis.from_url(os.environ['REDIS_URL']); sys.exit(0 if any(r.scan_iter('ragent:worker:*')) else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     depends_on:
       postgres:
         condition: service_healthy

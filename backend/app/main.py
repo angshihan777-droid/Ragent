@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.db import lifespan
 from app.middleware.owner import OwnerCookieMiddleware
-from app.routers import config, documents, health, projects, requests, threads
+from app.routers import config, documents, health, metrics, projects, requests, threads
 
 app = FastAPI(title="Ragent", lifespan=lifespan)
 
@@ -33,3 +33,4 @@ app.include_router(documents.router)
 app.include_router(config.router)
 app.include_router(projects.router)
 app.include_router(threads.router)
+app.include_router(metrics.router)

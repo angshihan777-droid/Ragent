@@ -1,20 +1,47 @@
 <script setup>
-import { onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { RouterView, useRoute } from "vue-router";
 import Sidebar from "./components/Sidebar.vue";
 import ResizeHandle from "./components/ResizeHandle.vue";
 import { usePreference } from "./composables/usePreference.js";
 import Icon from "./components/Icon.vue";
 import { store } from "./store.js";
+import { api } from "./api.js";
 const route = useRoute();
 const sidebarWidth = usePreference("ragent.sidebarWidth", 264);
 sidebarWidth.value = Math.min(360, Math.max(220, sidebarWidth.value));
 const sidebarCollapsed = usePreference("ragent.sidebarCollapsed", false);
 const loadError = ref("");
+const health = ref(null);
+let healthTimer;
+
+const healthMessage = computed(() => {
+  if (!health.value || health.value.ok) return "";
+  if (health.value.status === "unreachable") return "后端不可达，请确认 API 已启动。";
+  const missing = [];
+  if (health.value.postgres === false) missing.push("PostgreSQL");
+  if (health.value.redis === false) missing.push("Redis");
+  if (health.value.worker === false) missing.push("worker");
+  const pending = Number(health.value.queue?.pending || 0);
+  const queueText = pending > 0 ? `，当前 ${pending} 个请求排队` : "";
+  return `服务未就绪：${missing.join(" / ") || "未知依赖"}${queueText}。`;
+});
+
+async function checkHealth() {
+  try {
+    health.value = await api.getReady();
+  } catch (_) {
+    health.value = { ok: false, status: "unreachable" };
+  }
+}
+
 onMounted(async () => {
   const results = await Promise.allSettled([store.loadProjects(), store.loadLLM()]);
   loadError.value = results.filter(r => r.status === "rejected").map(r => r.reason.message).join("；");
+  checkHealth();
+  healthTimer = setInterval(checkHealth, 15000);
 });
+onBeforeUnmount(() => clearInterval(healthTimer));
 </script>
 
 <template>
@@ -27,6 +54,7 @@ onMounted(async () => {
         <RouterLink v-if="route.path !== '/chat'" class="back-link" to="/chat"><Icon name="arrow-left" :size="15" /> 返回对话</RouterLink>
       </div>
       <p v-if="loadError" class="load-error" role="alert">加载失败：{{ loadError }}。请检查后端连接后刷新。</p>
+      <p v-if="healthMessage" class="system-banner" role="alert"><Icon name="alert" :size="15" /><span>{{ healthMessage }}</span></p>
       <div class="route-content"><RouterView v-slot="{ Component }"><keep-alive><component :is="Component" /></keep-alive></RouterView></div>
     </main>
   </div>
@@ -40,5 +68,6 @@ onMounted(async () => {
 .back-link { display: inline-flex; align-items: center; gap: var(--s-2); color: var(--muted); text-decoration: none; font-size: var(--fs-sm); padding: var(--s-1) var(--s-2); border-radius: var(--r-sm); transition: color var(--ease), background var(--ease); }
 .back-link:hover { color: var(--ink); background: var(--surface-3); }
 .load-error { color: var(--danger-ink); background: var(--danger-soft); border-bottom: 1px solid var(--danger-line); padding: var(--s-3) var(--s-4); margin: 0; font-size: var(--fs-sm); }
+.system-banner { display: flex; align-items: center; gap: var(--s-2); color: var(--danger-ink); background: var(--danger-soft); border-bottom: 1px solid var(--danger-line); padding: var(--s-3) var(--s-4); margin: 0; font-size: var(--fs-sm); }
 @media (max-width: 760px) { .layout { flex-direction: column; } .layout > :deep(.sidebar) { width: 100% !important; max-height: 36dvh; flex-shrink: 0; } }
 </style>

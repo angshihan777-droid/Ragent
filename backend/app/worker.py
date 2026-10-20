@@ -8,8 +8,9 @@ import uuid
 import asyncpg
 import redis.asyncio as aioredis
 
-from app.agent.graph import stream_agent
+from app.agent.graph import close_checkpointer, init_checkpointer, stream_agent
 from app.config import get_settings
+from app.db import WORKER_HEARTBEAT_PREFIX, WORKER_HEARTBEAT_TTL_SECONDS
 from app.events import publish_done, publish_sources, publish_step, publish_token
 from app.queue import QUEUE_KEY, enqueue_run
 from app.repositories import messages, requests, runs
@@ -25,6 +26,7 @@ MAX_ATTEMPTS = 3
 WORKER_CONCURRENCY = 4
 EXHAUSTED_ERROR = "本轮执行未完成：多次执行中断，已停止重试。"
 WORKER_ID = f"{socket.gethostname()}-{uuid.uuid4().hex[:8]}"
+WORKER_HEARTBEAT_INTERVAL_SECONDS = 5
 log = logging.getLogger(__name__)
 
 
@@ -124,7 +126,8 @@ async def _handle_run(pool, redis, run_id):
             return
         if next_id is not None:
             await _notify(enqueue_run, redis, next_id)
-        await _notify(publish_done, redis, info["request_id"], status, result[0] if result else None, error)
+        await _notify(publish_done, redis, info["request_id"], status,
+                      result[0] if result else None, error, usage)
     finally:
         for task in (hb, work):
             task.cancel()
@@ -168,11 +171,24 @@ async def _reaper_loop(pool, redis):
             log.warning("Recovery scan failed (%s); retrying next interval", type(exc).__name__)
 
 
+async def _worker_heartbeat_loop(redis):
+    """刷新 worker 存活心跳；API 的 /ready 靠它判断有没有消费者。"""
+    key = f"{WORKER_HEARTBEAT_PREFIX}{WORKER_ID}"
+    while True:
+        try:
+            await redis.set(key, "1", ex=WORKER_HEARTBEAT_TTL_SECONDS)
+        except aioredis.RedisError:
+            log.warning("Worker heartbeat unavailable; readiness will report worker down")
+        await asyncio.sleep(WORKER_HEARTBEAT_INTERVAL_SECONDS)
+
+
 async def main():
     settings = get_settings()
     pool = await asyncpg.create_pool(dsn=settings.database_url)
     redis = aioredis.from_url(settings.redis_url, socket_connect_timeout=5, socket_timeout=10)
+    await init_checkpointer(settings.database_url)
     reaper = asyncio.create_task(_reaper_loop(pool, redis))
+    heartbeat = asyncio.create_task(_worker_heartbeat_loop(redis))
     # 有空位才去取任务：取到的任务一定马上能跑，不会领了租约却排队等空位
     slots = asyncio.Semaphore(WORKER_CONCURRENCY)
     running = set()
@@ -203,9 +219,11 @@ async def main():
                 await asyncio.sleep(2)
     finally:
         reaper.cancel()
+        heartbeat.cancel()
         for task in running:
             task.cancel()
-        await asyncio.gather(reaper, *running, return_exceptions=True)
+        await asyncio.gather(reaper, heartbeat, *running, return_exceptions=True)
+        await close_checkpointer()
         await pool.close()
         await redis.aclose()
 

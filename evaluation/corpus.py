@@ -30,6 +30,10 @@ QUERIES = [
     ("q14", "苍穹发布与数据库恢复演练各需要做什么？", ["release", "backup"]),
     ("q15", "苍穹服务故障时告警响应和版本回滚的要求分别是什么？", ["alerts", "release"]),
     ("q16", "请三天以上年假找谁批？", ["leave"]),
+    ("q17", "试用期员工可以使用年假吗？", ["leave"]),
+    ("q18", "企业邮箱密码重置能修复 VPN 设备证书吗？", ["password"]),
+    ("q19", "含客户个人信息的资料对外共享需要谁审批？", ["security"]),
+    ("q20", "新员工什么时候和导师制定试用期目标？", ["onboard"]),
 ]
 # No-answer probes are reported separately; top-k retrieval cannot establish rejection.
 NO_ANSWER = ["星河公司明年上市的股票发行价格是多少？", "苍穹项目负责人家庭住址是什么？"]
